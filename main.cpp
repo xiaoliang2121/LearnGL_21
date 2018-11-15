@@ -4,8 +4,7 @@
 // Richard S. Wright Jr.
 // rwright@starstonesoftware.com
 
-//#include "gltools.h"	// OpenGL toolkit
-#include <glut.h>
+#include "gltools.h"	// OpenGL toolkit
 
 ///////////////////////////////////////////////////////////
 // Called to draw scene
