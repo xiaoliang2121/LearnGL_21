@@ -8,142 +8,99 @@
 #include "gltools.h"	// OpenGL toolkit
 #include <cmath>
 
+// Define a constant for the value of PI
 #define GL_PI 3.1415f
 
 // Rotation amounts
 static GLfloat xRot = 0.0f;
 static GLfloat yRot = 0.0f;
 
-// Flags for effects
-int iCull = 0;
-int iOutline = 0;
-int iDepth = 0;
-
-///////////////////////////////////////////////////////////
-// Reset flags as appropriate in response to menu selections
-/**
- * @brief ProcessMenu
- * @param value
- */
-void ProcessMenu(int value){
-    switch(value)
-    {
-    case 1:
-        iDepth = !iDepth;
-        break;
-    case 2:
-        iCull = !iCull;
-        break;
-    case 3:
-        iOutline = !iOutline;
-    default:
-        break;
-    }
-}
+// Bitmap of camp fire
+GLubyte fire[128] = { 0x00, 0x00, 0x00, 0x00,
+                   0x00, 0x00, 0x00, 0x00,
+                   0x00, 0x00, 0x00, 0x00,
+                   0x00, 0x00, 0x00, 0x00,
+                   0x00, 0x00, 0x00, 0x00,
+                   0x00, 0x00, 0x00, 0x00,
+                   0x00, 0x00, 0x00, 0xc0,
+                   0x00, 0x00, 0x01, 0xf0,
+                   0x00, 0x00, 0x07, 0xf0,
+                   0x0f, 0x00, 0x1f, 0xe0,
+                   0x1f, 0x80, 0x1f, 0xc0,
+                   0x0f, 0xc0, 0x3f, 0x80,
+                   0x07, 0xe0, 0x7e, 0x00,
+                   0x03, 0xf0, 0xff, 0x80,
+                   0x03, 0xf5, 0xff, 0xe0,
+                   0x07, 0xfd, 0xff, 0xf8,
+                   0x1f, 0xfc, 0xff, 0xe8,
+                   0xff, 0xe3, 0xbf, 0x70,
+                   0xde, 0x80, 0xb7, 0x00,
+                   0x71, 0x10, 0x4a, 0x80,
+                   0x03, 0x10, 0x4e, 0x40,
+                   0x02, 0x88, 0x8c, 0x20,
+                   0x05, 0x05, 0x04, 0x40,
+                   0x02, 0x82, 0x14, 0x40,
+                   0x02, 0x40, 0x10, 0x80,
+                   0x02, 0x64, 0x1a, 0x80,
+                   0x00, 0x92, 0x29, 0x00,
+                   0x00, 0xb0, 0x48, 0x00,
+                   0x00, 0xc8, 0x90, 0x00,
+                   0x00, 0x85, 0x10, 0x00,
+                   0x00, 0x03, 0x00, 0x00,
+                   0x00, 0x00, 0x10, 0x00 };
 
 
 // Called to draw scene
 void RenderScene(void)
     {
-    GLfloat x,y,angle;                  // Storeage for varying X Y coordinate
-    int iPivot = 1;                     // Used to flag alternating colors
+    // Clear the window
+    glClear(GL_COLOR_BUFFER_BIT);
 
-    // Clear the window with current clearing color
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Turn culling on if flag is set
-    if(iCull)
-        glEnable(GL_CULL_FACE);
-    else
-        glDisable(GL_CULL_FACE);
-
-    // Enable depth testing if flag is set
-    if(iDepth)
-        glEnable(GL_DEPTH_TEST);
-    else
-        glDisable(GL_DEPTH_TEST);
-
-    // Draw back side as a polygon only, if flag is set
-    if(iOutline)
-        glPolygonMode(GL_BACK,GL_LINE);
-    else
-        glPolygonMode(GL_BACK,GL_FILL);
-
+    // Save matrix state and do the rotation
     glPushMatrix();
-    glRotatef(xRot,1.0f,0.0f,0.0f);
-    glRotatef(yRot,0.0f,1.0f,0.0f);
+    glRotatef(xRot, 1.0f, 0.0f, 0.0f);
+    glRotatef(yRot, 0.0f, 1.0f, 0.0f);
 
-    // Begin a triangle fan
-    glBegin(GL_TRIANGLE_FAN);
-        glVertex3f(0.0f, 0.0f, 75.0f);
-        for(angle=0.0f; angle<(2.0f*GL_PI); angle+=(GL_PI/8.0f))
-        {
-            x = 50.0f*sin(angle);
-            y = 50.0f*cos(angle);
-
-            if(iPivot%2 == 0)
-                glColor3f(0.0f,1.0f,0.0f);
-            else
-                glColor3f(1.0f,0.0f,0.0f);
-
-            iPivot++;
-
-            glVertex2f(x,y);
-        }
-    // Done drawing fan for cone
+    // Begin the stop sign shape,
+    // use a standard polygon for simplicity
+    glBegin(GL_POLYGON);
+        glVertex2f(-20.0f, 50.0f);
+        glVertex2f(20.0f, 50.0f);
+        glVertex2f(50.0f, 20.0f);
+        glVertex2f(50.0f, -20.0f);
+        glVertex2f(20.0f, -50.0f);
+        glVertex2f(-20.0f, -50.0f);
+        glVertex2f(-50.0f, -20.0f);
+        glVertex2f(-50.0f, 20.0f);
     glEnd();
 
-    // Begin a new triangle fan to cover the bottom
-    glBegin(GL_TRIANGLE_FAN);
-        // Center of fan is at the origin
-        glVertex2f(0.0f,0.0f);
-        for(angle=0.0f; angle<(2.0f*GL_PI); angle+=(GL_PI/8.0f))
-        {
-            x = 50.0f*sin(angle);
-            y = 50.0f*cos(angle);
-
-            if(iPivot%2 == 0)
-                glColor3f(0.0f,1.0f,0.0f);
-            else
-                glColor3f(1.0f,0.0f,0.0f);
-
-            iPivot++;
-
-            glVertex2f(x,y);
-        }
-    // Done drawing the fan that covers the bottom
-    glEnd();
-
+    // Restore transformations
     glPopMatrix();
-
 
     // Flush drawing commands
     glutSwapBuffers();
     }
 
-void ChangeSize(int w, int h){
-    GLfloat nRange = 100.0f;
 
-    if(h == 0)
-        h = 1;
+// This function does any needed initialization on the rendering
+// context.
+void SetupRC()
+    {
+    // Black background
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
 
-    glViewport(0,0,w,h);
+    // Set drawing color to red
+    glColor3f(1.0f, 0.0f, 0.0f);
 
-    // Reset projection matrix stack
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
+    // Enable polygon stippling
+    glEnable(GL_POLYGON_STIPPLE);
 
-    if(w <= h)
-        glOrtho(-nRange,nRange,-nRange*h/w,nRange*h/w,-nRange,nRange);
-    else
-        glOrtho(-nRange*w/h,nRange*w/h,-nRange,nRange,-nRange,nRange);
+    // Specify a specific stipple pattern
+    glPolygonStipple(fire);
+    }
 
-    // Reset Model view matrix stack
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-}
-
-void SpecialKeys(int key, int x, int y){
+void SpecialKeys(int key, int x, int y)
+    {
     if(key == GLUT_KEY_UP)
         xRot-= 5.0f;
 
@@ -170,18 +127,33 @@ void SpecialKeys(int key, int x, int y){
 
     // Refresh the Window
     glutPostRedisplay();
-}
+    }
 
-///////////////////////////////////////////////////////////
-// Setup the rendering state
-void SetupRC(void)
+
+void ChangeSize(int w, int h)
     {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    GLfloat nRange = 100.0f;
 
-    glColor3f(0.0f,1.0f,0.0f);
+    // Prevent a divide by zero
+    if(h == 0)
+        h = 1;
 
-    glShadeModel(GL_FLAT);
-    glFrontFace(GL_CW);
+    // Set Viewport to window dimensions
+    glViewport(0, 0, w, h);
+
+    // Reset projection matrix stack
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+    // Establish clipping volume (left, right, bottom, top, near, far)
+    if (w <= h)
+        glOrtho (-nRange, nRange, -nRange*h/w, nRange*h/w, -nRange, nRange);
+    else
+        glOrtho (-nRange*w/h, nRange*w/h, -nRange, nRange, -nRange, nRange);
+
+    // Reset Model view matrix stack
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
     }
 
 ///////////////////////////////////////////////////////////
@@ -191,14 +163,7 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("Triangle Culling Example");
-
-    // Create the Menu
-    glutCreateMenu(ProcessMenu);
-    glutAddMenuEntry("Toggle depth test",1);
-    glutAddMenuEntry("Toggle cull backface",2);
-    glutAddMenuEntry("Toggle outline back",3);
-    glutAttachMenu(GLUT_RIGHT_BUTTON);
+    glutCreateWindow("Polygon Stippling");
 
     glutDisplayFunc(RenderScene);
     glutReshapeFunc(ChangeSize);
