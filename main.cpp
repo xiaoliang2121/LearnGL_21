@@ -19,6 +19,9 @@ static GLfloat yRot = 0.0f;
 void RenderScene(void)
     {
     GLfloat x,y,z,angle;
+    GLfloat sizes[2];   // Store supported point size range
+    GLfloat step;       // Store supported point size increments
+    GLfloat curSize;    // Store current size
 
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT);
@@ -27,17 +30,29 @@ void RenderScene(void)
     glRotatef(xRot,1.0f,0.0f,0.0f);
     glRotatef(yRot,0.0f,1.0f,0.0f);
 
-    glBegin(GL_POINTS);
+    // 获得受支持点的大小范围和步进值
+    glGetFloatv(GL_POINT_SIZE_RANGE,sizes);
+    glGetFloatv(GL_POINT_SIZE_GRANULARITY,&step);
+
+    curSize = sizes[0];
+
+//    glBegin(GL_POINTS);
         z = -50.0f;
         for(angle=0.0f; angle<=(2.0f*GL_PI)*3.0f; angle+=0.1f)
         {
             x = 50.0f*sin(angle);
             y = 50.0f*cos(angle);
 
-            glVertex3f(x,y,z);
+            glPointSize(curSize);   // 在glBegin/glEnd之外调用glPointSize
+
+            glBegin(GL_POINTS);
+                glVertex3f(x,y,z);
+            glEnd();
+
             z += 0.5f;
+            curSize += step;
         }
-    glEnd();
+//    glEnd();
 
     glPopMatrix();
 
