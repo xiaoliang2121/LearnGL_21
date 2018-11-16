@@ -18,7 +18,9 @@ static GLfloat yRot = 0.0f;
 // Called to draw scene
 void RenderScene(void)
     {
-    GLfloat x,y,z,angle;
+    GLfloat y;
+    GLfloat fSizes[2];
+    GLfloat fCurrSize;
 
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT);
@@ -27,17 +29,22 @@ void RenderScene(void)
     glRotatef(xRot,1.0f,0.0f,0.0f);
     glRotatef(yRot,0.0f,1.0f,0.0f);
 
-    glBegin(GL_LINE_STRIP);
-        z = -50.0f;
-        for(angle=0.0f; angle<=(2.0f*GL_PI)*3.0f; angle+=0.1f)
-        {
-            x = 50.0f*sin(angle);
-            y = 50.0f*cos(angle);
+    // Get line size metrics and save the smallest value
+    glGetFloatv(GL_LINE_WIDTH_RANGE,fSizes);
+    fCurrSize = fSizes[0];
 
-            glVertex3f(x,y,z);
-            z += 0.5f;
-        }
-    glEnd();
+
+    for(y=-90.0f; y<90.0f; y+=20.0f)
+    {
+        glLineWidth(fCurrSize);
+
+        glBegin(GL_LINES);
+            glVertex2f(-80.0f,y);
+            glVertex2f(80.0f,y);
+        glEnd();
+
+        fCurrSize += 1.0f;
+    }
 
     glPopMatrix();
 
