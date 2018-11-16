@@ -18,7 +18,7 @@ static GLfloat yRot = 0.0f;
 // Called to draw scene
 void RenderScene(void)
     {
-    GLfloat x,y,z,angle;
+    GLfloat x,y,z,angle;        // Storeage for coordinates and angles
 
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT);
@@ -27,15 +27,17 @@ void RenderScene(void)
     glRotatef(xRot,1.0f,0.0f,0.0f);
     glRotatef(yRot,0.0f,1.0f,0.0f);
 
-    glBegin(GL_POINTS);
-        z = -50.0f;
-        for(angle=0.0f; angle<=(2.0f*GL_PI)*3.0f; angle+=0.1f)
+    glBegin(GL_LINES);
+        z = 0.0f;
+        for(angle=0.0f; angle<GL_PI; angle+=(GL_PI/20.0f))
         {
             x = 50.0f*sin(angle);
             y = 50.0f*cos(angle);
-
             glVertex3f(x,y,z);
-            z += 0.5f;
+
+            x = 50.0f*sin(angle+GL_PI);
+            y = 50.0f*cos(angle+GL_PI);
+            glVertex3f(x,y,z);
         }
     glEnd();
 
@@ -112,7 +114,8 @@ int main(int argc, char* argv[])
     {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-    glutCreateWindow("Points Example");
+    glutInitWindowSize(800,600);
+    glutCreateWindow("Lines Example");
 
     glutDisplayFunc(RenderScene);
     glutReshapeFunc(ChangeSize);
