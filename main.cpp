@@ -27,7 +27,7 @@ void RenderScene(void)
     glRotatef(xRot,1.0f,0.0f,0.0f);
     glRotatef(yRot,0.0f,1.0f,0.0f);
 
-    glBegin(GL_POINTS);
+    glBegin(GL_LINE_STRIP);
         z = -50.0f;
         for(angle=0.0f; angle<=(2.0f*GL_PI)*3.0f; angle+=0.1f)
         {
@@ -112,7 +112,8 @@ int main(int argc, char* argv[])
     {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-    glutCreateWindow("Points Example");
+    glutInitWindowSize(800,600);
+    glutCreateWindow("Line Strips Example");
 
     glutDisplayFunc(RenderScene);
     glutReshapeFunc(ChangeSize);
