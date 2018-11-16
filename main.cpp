@@ -15,39 +15,44 @@
 static GLfloat xRot = 0.0f;
 static GLfloat yRot = 0.0f;
 
-// Bitmap of camp fire
-GLubyte fire[128] = { 0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0xc0,
-                   0x00, 0x00, 0x01, 0xf0,
-                   0x00, 0x00, 0x07, 0xf0,
-                   0x0f, 0x00, 0x1f, 0xe0,
-                   0x1f, 0x80, 0x1f, 0xc0,
-                   0x0f, 0xc0, 0x3f, 0x80,
-                   0x07, 0xe0, 0x7e, 0x00,
-                   0x03, 0xf0, 0xff, 0x80,
-                   0x03, 0xf5, 0xff, 0xe0,
-                   0x07, 0xfd, 0xff, 0xf8,
-                   0x1f, 0xfc, 0xff, 0xe8,
-                   0xff, 0xe3, 0xbf, 0x70,
-                   0xde, 0x80, 0xb7, 0x00,
-                   0x71, 0x10, 0x4a, 0x80,
-                   0x03, 0x10, 0x4e, 0x40,
-                   0x02, 0x88, 0x8c, 0x20,
-                   0x05, 0x05, 0x04, 0x40,
-                   0x02, 0x82, 0x14, 0x40,
-                   0x02, 0x40, 0x10, 0x80,
-                   0x02, 0x64, 0x1a, 0x80,
-                   0x00, 0x92, 0x29, 0x00,
-                   0x00, 0xb0, 0x48, 0x00,
-                   0x00, 0xc8, 0x90, 0x00,
-                   0x00, 0x85, 0x10, 0x00,
-                   0x00, 0x03, 0x00, 0x00,
-                   0x00, 0x00, 0x10, 0x00 };
+// Flags for effects
+#define MODE_SOLID 0
+#define MODE_LINE  1
+#define MODE_POINT 2
+
+int iMode = MODE_SOLID;
+GLboolean bEdgeFlag = GL_TRUE;
+
+///////////////////////////////////////////////////////////////////////////////
+// Reset flags as appropriate in response to menu selections
+void ProcessMenu(int value)
+    {
+    switch(value)
+        {
+        case 1:
+            iMode = MODE_SOLID;
+            break;
+
+        case 2:
+            iMode = MODE_LINE;
+            break;
+
+        case 3:
+            iMode = MODE_POINT;
+            break;
+
+        case 4:
+            bEdgeFlag = GL_TRUE;
+            break;
+
+        case 5:
+        default:
+            bEdgeFlag = GL_FALSE;
+            break;
+        }
+
+    glutPostRedisplay();
+    }
 
 
 // Called to draw scene
@@ -56,22 +61,63 @@ void RenderScene(void)
     // Clear the window
     glClear(GL_COLOR_BUFFER_BIT);
 
+
+    // Draw back side as a polygon only, if flag is set
+    if(iMode == MODE_LINE)
+        glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+
+    if(iMode == MODE_POINT)
+        glPolygonMode(GL_FRONT_AND_BACK,GL_POINT);
+
+    if(iMode == MODE_SOLID)
+        glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+
+
     // Save matrix state and do the rotation
     glPushMatrix();
     glRotatef(xRot, 1.0f, 0.0f, 0.0f);
     glRotatef(yRot, 0.0f, 1.0f, 0.0f);
 
-    // Begin the stop sign shape,
-    // use a standard polygon for simplicity
-    glBegin(GL_POLYGON);
-        glVertex2f(-20.0f, 50.0f);
-        glVertex2f(20.0f, 50.0f);
-        glVertex2f(50.0f, 20.0f);
-        glVertex2f(50.0f, -20.0f);
-        glVertex2f(20.0f, -50.0f);
-        glVertex2f(-20.0f, -50.0f);
-        glVertex2f(-50.0f, -20.0f);
-        glVertex2f(-50.0f, 20.0f);
+
+    // Begin the triangles
+    glBegin(GL_TRIANGLES);
+
+        glEdgeFlag(bEdgeFlag);
+        glVertex2f(-20.0f, 0.0f);
+        glEdgeFlag(GL_TRUE);
+        glVertex2f(20.0f, 0.0f);
+        glVertex2f(0.0f, 40.0f);
+
+        glVertex2f(-20.0f,0.0f);
+        glVertex2f(-60.0f,-20.0f);
+        glEdgeFlag(bEdgeFlag);
+        glVertex2f(-20.0f,-40.0f);
+        glEdgeFlag(GL_TRUE);
+
+        glVertex2f(-20.0f,-40.0f);
+        glVertex2f(0.0f, -80.0f);
+        glEdgeFlag(bEdgeFlag);
+        glVertex2f(20.0f, -40.0f);
+        glEdgeFlag(GL_TRUE);
+
+        glVertex2f(20.0f, -40.0f);
+        glVertex2f(60.0f, -20.0f);
+        glEdgeFlag(bEdgeFlag);
+        glVertex2f(20.0f, 0.0f);
+        glEdgeFlag(GL_TRUE);
+
+        // Center square as two triangles
+        glEdgeFlag(bEdgeFlag);
+        glVertex2f(-20.0f, 0.0f);
+        glVertex2f(-20.0f,-40.0f);
+        glVertex2f(20.0f, 0.0f);
+
+        glVertex2f(-20.0f,-40.0f);
+        glVertex2f(20.0f, -40.0f);
+        glVertex2f(20.0f, 0.0f);
+        glEdgeFlag(GL_TRUE);
+
+    // Done drawing Triangles
     glEnd();
 
     // Restore transformations
@@ -81,7 +127,6 @@ void RenderScene(void)
     glutSwapBuffers();
     }
 
-
 // This function does any needed initialization on the rendering
 // context.
 void SetupRC()
@@ -89,14 +134,8 @@ void SetupRC()
     // Black background
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
 
-    // Set drawing color to red
-    glColor3f(1.0f, 0.0f, 0.0f);
-
-    // Enable polygon stippling
-    glEnable(GL_POLYGON_STIPPLE);
-
-    // Specify a specific stipple pattern
-    glPolygonStipple(fire);
+    // Set drawing color to green
+    glColor3f(0.0f, 1.0f, 0.0f);
     }
 
 void SpecialKeys(int key, int x, int y)
@@ -156,18 +195,35 @@ void ChangeSize(int w, int h)
     glLoadIdentity();
     }
 
-///////////////////////////////////////////////////////////
-// Main program entry point
 int main(int argc, char* argv[])
-    {
+{
+    int nModeMenu;
+    int nEdgeMenu;
+    int nMainMenu;
+
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("Polygon Stippling");
+    glutCreateWindow("Solid and Outlined Star");
 
-    glutDisplayFunc(RenderScene);
+    // Create the Menu
+    nModeMenu = glutCreateMenu(ProcessMenu);
+    glutAddMenuEntry("Solid",1);
+    glutAddMenuEntry("Outline",2);
+    glutAddMenuEntry("Points",3);
+
+    nEdgeMenu = glutCreateMenu(ProcessMenu);
+    glutAddMenuEntry("On",4);
+    glutAddMenuEntry("Off",5);
+
+    nMainMenu = glutCreateMenu(ProcessMenu);
+    glutAddSubMenu("Mode", nModeMenu);
+    glutAddSubMenu("Edges", nEdgeMenu);
+    glutAttachMenu(GLUT_RIGHT_BUTTON);
+
     glutReshapeFunc(ChangeSize);
     glutSpecialFunc(SpecialKeys);
+    glutDisplayFunc(RenderScene);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
@@ -181,9 +237,8 @@ int main(int argc, char* argv[])
     printf("GLU工具库版本：%s\n",gluVersion);
 
     SetupRC();
-
     glutMainLoop();
 
     return 0;
-    }
+}
 
