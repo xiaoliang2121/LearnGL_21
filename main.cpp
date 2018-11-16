@@ -18,9 +18,9 @@ static GLfloat yRot = 0.0f;
 // Called to draw scene
 void RenderScene(void)
     {
-    GLfloat y;
-    GLfloat fSizes[2];
-    GLfloat fCurrSize;
+    GLfloat y;                  // Storeage for varying Y coordinate
+    GLint factor = 3;           // Stippling factor
+    GLushort pattern = 0x5555;  // Stipple pattern
 
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT);
@@ -29,21 +29,16 @@ void RenderScene(void)
     glRotatef(xRot,1.0f,0.0f,0.0f);
     glRotatef(yRot,0.0f,1.0f,0.0f);
 
-    // Get line size metrics and save the smallest value
-    glGetFloatv(GL_LINE_WIDTH_RANGE,fSizes);
-    fCurrSize = fSizes[0];
-
-
     for(y=-90.0f; y<90.0f; y+=20.0f)
     {
-        glLineWidth(fCurrSize);
+        glLineStipple(factor,pattern);
 
         glBegin(GL_LINES);
             glVertex2f(-80.0f,y);
             glVertex2f(80.0f,y);
         glEnd();
 
-        fCurrSize += 1.0f;
+        factor++;
     }
 
     glPopMatrix();
@@ -111,6 +106,8 @@ void SetupRC(void)
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     glColor3f(0.0f,1.0f,0.0f);
+
+    glEnable(GL_LINE_STIPPLE);
     }
 
 ///////////////////////////////////////////////////////////
