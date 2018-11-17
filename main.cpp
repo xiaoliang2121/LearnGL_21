@@ -7,14 +7,16 @@
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
 
-// Rotation amounts
+/// Rotation amounts
 static GLfloat xRot = 0.0f;
 static GLfloat yRot = 0.0f;
+
 
 // Change viewing volume and viewport.  Called when window is resized
 void ChangeSize(int w, int h)
     {
-    GLfloat nRange = 120.0f;
+    GLfloat fAspect;
+
     // Prevent a divide by zero
     if(h == 0)
         h = 1;
@@ -22,20 +24,18 @@ void ChangeSize(int w, int h)
     // Set Viewport to window dimensions
     glViewport(0, 0, w, h);
 
+    fAspect = (GLfloat)w/(GLfloat)h;
+
     // Reset coordinate system
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    // Establish clipping volume (left, right, bottom, top, near, far)
-    if (w <= h)
-        glOrtho (-nRange, nRange, -nRange*h/w, nRange*h/w, -nRange*2.0f, nRange*2.0f);
-    else
-        glOrtho (-nRange*w/h, nRange*w/h, -nRange, nRange, -nRange*2.0f, nRange*2.0f);
+    // Produce the perspective projection
+    gluPerspective(60.0f, fAspect, 1.0, 400.0);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     }
-
 
 
 // This function does any needed initialization on the rendering
@@ -108,6 +108,7 @@ void RenderScene(void)
 
     // Save the matrix state and do the rotations
     glPushMatrix();
+    glTranslatef(0.0f, 0.0f, -300.0f);
     glRotatef(xRot, 1.0f, 0.0f, 0.0f);
     glRotatef(yRot, 0.0f, 1.0f, 0.0f);
 
@@ -244,6 +245,7 @@ void RenderScene(void)
     // Buffer swap
     glutSwapBuffers();
     }
+
 ///////////////////////////////////////////////////////////
 // Main program entry point
 int main(int argc, char* argv[])
@@ -251,7 +253,7 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("Orthographic Projection");
+    glutCreateWindow("Perspective Projection");
 
     glutReshapeFunc(ChangeSize);
     glutSpecialFunc(SpecialKeys);
