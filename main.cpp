@@ -63,20 +63,51 @@ void DrawTorus(M3DMatrix44f mTransform){
 // Called to draw scene
 void RenderScene(void)
 {
-    M3DMatrix44f transformationMatrix;
+    M3DMatrix44f translationMatrix,rotationMatrix,transformationMatrix;
     static GLfloat yRot = 0.0f;
 
     yRot += 0.5f;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//    1
+//    m3dRotationMatrix44(transformationMatrix,m3dDegToRad(yRot),\
+//                        0.0f,1.0f,0.0f);
+//    transformationMatrix[12] = 0.0f;
+//    transformationMatrix[13] = 0.0f;
+//    transformationMatrix[14] = -2.5f;
 
-    m3dRotationMatrix44(transformationMatrix,m3dDegToRad(yRot),\
-                        0.0f,1.0f,0.0f);
-    transformationMatrix[12] = 0.0f;
-    transformationMatrix[13] = 0.0f;
-    transformationMatrix[14] = -2.5f;
+//    glLoadMatrixf(transformationMatrix);
 
-    DrawTorus(transformationMatrix);
+//    gltDrawTorus(0.35,0.15,40,20);
+
+//    2
+    glPushMatrix();
+        glTranslatef(0.0f,0.0f,-2.5f);
+        glRotatef(yRot,0.0f,1.0f,0.0f);
+
+        gltDrawTorus(0.35,0.15,40,20);
+    glPopMatrix();
+
+//    3     未知原因没有工作
+//    m3dRotationMatrix44(rotationMatrix,m3dDegToRad(yRot),\
+//                        0.0f,1.0f,0.0f);
+//    m3dTranslateMatrix44(translationMatrix,0.0f,0.0f,-2.5f);
+//    m3dMatrixMultiply44(transformationMatrix,translationMatrix,rotationMatrix);
+//    glLoadMatrixf(transformationMatrix);
+
+//    gltDrawTorus(0.35f,0.15f,40,20);
+
+//    4     未知原因没有工作
+//    glPushMatrix();
+//        m3dRotationMatrix44(rotationMatrix,m3dDegToRad(yRot),\
+//                            0.0f,1.0f,0.0f);
+//        m3dTranslateMatrix44(translationMatrix,0.0f,0.0f,-2.5f);
+
+//        glMultMatrixf(translationMatrix);
+//        glMultMatrixf(rotationMatrix);
+
+//        gltDrawTorus(0.35f,0.15f,40,20);
+//    glPopMatrix();
 
     glutSwapBuffers();
 
@@ -133,7 +164,7 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("Manual Transformations Demo");
+    glutCreateWindow("OpenGL Transformations Demo");
 
     glutReshapeFunc(ChangeSize);
     glutDisplayFunc(RenderScene);
