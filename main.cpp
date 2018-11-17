@@ -44,85 +44,34 @@ void ProcessMenu(int value){
 
 // Called to draw scene
 void RenderScene(void)
-    {
-    GLfloat x,y,angle;                  // Storeage for varying X Y coordinate
-    int iPivot = 1;                     // Used to flag alternating colors
-
+{
     // Clear the window with current clearing color
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT);
 
-    // Turn culling on if flag is set
-    if(iCull)
-        glEnable(GL_CULL_FACE);
-    else
-        glDisable(GL_CULL_FACE);
+    // Enable smooth shading
+    glShadeModel(GL_SMOOTH);
 
-    // Enable depth testing if flag is set
-    if(iDepth)
-        glEnable(GL_DEPTH_TEST);
-    else
-        glDisable(GL_DEPTH_TEST);
+    // Draw the triangle
+    glBegin(GL_TRIANGLES);
+        // Red Apex
+        glColor3ub((GLubyte)255,(GLubyte)0,(GLubyte)0);
+        glVertex3f(0.0f,200.0f,0.0f);
 
-    // Draw back side as a polygon only, if flag is set
-    if(iOutline)
-        glPolygonMode(GL_BACK,GL_LINE);
-    else
-        glPolygonMode(GL_BACK,GL_FILL);
+        // Green on the right bottom corner
+        glColor3ub((GLubyte)0,(GLubyte)255,(GLubyte)0);
+        glVertex3f(200.0f,-70.0f,0.0f);
 
-    glPushMatrix();
-    glRotatef(xRot,1.0f,0.0f,0.0f);
-    glRotatef(yRot,0.0f,1.0f,0.0f);
-
-    // Begin a triangle fan
-    glBegin(GL_TRIANGLE_FAN);
-        glVertex3f(0.0f, 0.0f, 75.0f);
-        for(angle=0.0f; angle<(2.0f*GL_PI); angle+=(GL_PI/8.0f))
-        {
-            x = 50.0f*sin(angle);
-            y = 50.0f*cos(angle);
-
-            if(iPivot%2 == 0)
-                glColor3f(0.0f,1.0f,0.0f);
-            else
-                glColor3f(1.0f,0.0f,0.0f);
-
-            iPivot++;
-
-            glVertex2f(x,y);
-        }
-    // Done drawing fan for cone
+        // Blue on the left bottom corner
+        glColor3ub((GLubyte)0,(GLubyte)0,(GLubyte)255);
+        glVertex3f(-200.0f, -70.0f, 0.0f);
     glEnd();
-
-    // Begin a new triangle fan to cover the bottom
-    glBegin(GL_TRIANGLE_FAN);
-        // Center of fan is at the origin
-        glVertex2f(0.0f,0.0f);
-        for(angle=0.0f; angle<(2.0f*GL_PI); angle+=(GL_PI/8.0f))
-        {
-            x = 50.0f*sin(angle);
-            y = 50.0f*cos(angle);
-
-            if(iPivot%2 == 0)
-                glColor3f(0.0f,1.0f,0.0f);
-            else
-                glColor3f(1.0f,0.0f,0.0f);
-
-            iPivot++;
-
-            glVertex2f(x,y);
-        }
-    // Done drawing the fan that covers the bottom
-    glEnd();
-
-    glPopMatrix();
-
 
     // Flush drawing commands
     glutSwapBuffers();
-    }
+}
 
 void ChangeSize(int w, int h){
-    GLfloat nRange = 100.0f;
+    GLfloat windowHeight,windowWidth;
 
     if(h == 0)
         h = 1;
@@ -130,17 +79,24 @@ void ChangeSize(int w, int h){
     glViewport(0,0,w,h);
 
     // Reset projection matrix stack
-    glMatrixMode(GL_PROJECTION);
+//    glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    if(w <= h)
-        glOrtho(-nRange,nRange,-nRange*h/w,nRange*h/w,-nRange,nRange);
+    // Window is higher than wide
+    if (w <= h)
+    {
+        windowHeight = 250.0f*h/w;
+        windowWidth = 250.0f;
+    }
     else
-        glOrtho(-nRange*w/h,nRange*w/h,-nRange,nRange,-nRange,nRange);
+    {
+        // Window is wider than high
+        windowWidth = 250.0f*w/h;
+        windowHeight = 250.0f;
+    }
 
-    // Reset Model view matrix stack
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    // Set the clipping volume
+    glOrtho(-windowWidth, windowWidth, -windowHeight, windowHeight, 1.0f, -1.0f);
 }
 
 void SpecialKeys(int key, int x, int y){
@@ -175,14 +131,9 @@ void SpecialKeys(int key, int x, int y){
 ///////////////////////////////////////////////////////////
 // Setup the rendering state
 void SetupRC(void)
-    {
+{
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-
-    glColor3f(0.0f,1.0f,0.0f);
-
-    glShadeModel(GL_FLAT);
-    glFrontFace(GL_CW);
-    }
+}
 
 ///////////////////////////////////////////////////////////
 // Main program entry point
@@ -191,18 +142,11 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("Triangle Culling Example");
-
-    // Create the Menu
-    glutCreateMenu(ProcessMenu);
-    glutAddMenuEntry("Toggle depth test",1);
-    glutAddMenuEntry("Toggle cull backface",2);
-    glutAddMenuEntry("Toggle outline back",3);
-    glutAttachMenu(GLUT_RIGHT_BUTTON);
+    glutCreateWindow("RGB Triangle");
 
     glutDisplayFunc(RenderScene);
     glutReshapeFunc(ChangeSize);
-    glutSpecialFunc(SpecialKeys);
+//    glutSpecialFunc(SpecialKeys);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
