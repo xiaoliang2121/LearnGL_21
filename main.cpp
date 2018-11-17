@@ -140,12 +140,21 @@ void RenderScene(void)
 // context.
 void SetupRC()
     {
+    GLfloat ambientLight[] = {1.0f,1.0f,1.0f,1.0f};
+
     glEnable(GL_DEPTH_TEST);	// Hidden surface removal
     glEnable(GL_CULL_FACE);		// Do not calculate inside of jet
     glFrontFace(GL_CCW);		// Counter clock-wise polygons face out
 
+    // 打开设置背景光
+    glEnable(GL_LIGHTING);
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT,ambientLight);
+
+    glEnable(GL_COLOR_MATERIAL);    // 启用材料颜色追踪
+    glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
+
     // Nice light blue
-    glClearColor(0.0f, 0.0f, 05.f,1.0f);
+    glClearColor(0.0f, 0.0f, 0.5f,1.0f);
     }
 
 void SpecialKeys(int key, int x, int y)
