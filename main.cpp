@@ -132,7 +132,8 @@ void TimerFunc(int value)
 
 void ChangeSize(int w, int h)
     {
-    GLfloat nRange = 100.0f;
+//    GLfloat nRange = 100.0f;
+    GLfloat fAspect;
 
     // Prevent a divide by zero
     if(h == 0)
@@ -147,10 +148,13 @@ void ChangeSize(int w, int h)
     glLoadIdentity();
 
     // Establish clipping volume (left, right, bottom, top, near, far)
-    if (w <= h)
-        glOrtho (-nRange, nRange, nRange*h/w, -nRange*h/w, -nRange*2.0f, nRange*2.0f);
-    else
-        glOrtho (-nRange*w/h, nRange*w/h, nRange, -nRange, -nRange*2.0f, nRange*2.0f);
+//    if (w <= h)
+//        glOrtho (-nRange, nRange, nRange*h/w, -nRange*h/w, -nRange*2.0f, nRange*2.0f);
+//    else
+//        glOrtho (-nRange*w/h, nRange*w/h, nRange, -nRange, -nRange*2.0f, nRange*2.0f);
+
+    fAspect = (float)w/(float)h;
+    gluPerspective(45.0,fAspect,1.0,500.0);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
