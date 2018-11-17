@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
+#include "math3d.h"
 #include <cmath>
 
 // Lighting values
@@ -13,100 +14,89 @@ GLfloat  whiteLight[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 GLfloat  sourceLight[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 GLfloat	 lightPos[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
+void DrawTorus(M3DMatrix44f mTransform){
+    GLfloat majorRadius = 0.35f;
+    GLfloat minorRadius = 0.15f;
+    GLint   numMajor = 40;
+    GLint   numMinor = 20;
+    M3DVector3f objectVertex;         // Vertex in object/eye space
+    M3DVector3f transformedVertex;    // New Transformed vertex
+    double majorStep = 2.0f*M3D_PI / numMajor;
+    double minorStep = 2.0f*M3D_PI / numMinor;
+    int i, j;
+
+    for (i=0; i<numMajor; ++i)
+    {
+        double a0 = i * majorStep;
+        double a1 = a0 + majorStep;
+        GLfloat x0 = (GLfloat) cos(a0);
+        GLfloat y0 = (GLfloat) sin(a0);
+        GLfloat x1 = (GLfloat) cos(a1);
+        GLfloat y1 = (GLfloat) sin(a1);
+
+        glBegin(GL_TRIANGLE_STRIP);
+        for (j=0; j<=numMinor; ++j)
+        {
+            double b = j * minorStep;
+            GLfloat c = (GLfloat) cos(b);
+            GLfloat r = minorRadius * c + majorRadius;
+            GLfloat z = minorRadius * (GLfloat) sin(b);
+
+            // First point
+            objectVertex[0] = x0*r;
+            objectVertex[1] = y0*r;
+            objectVertex[2] = z;
+            m3dTransformVector3(transformedVertex, objectVertex, mTransform);
+            glVertex3fv(transformedVertex);
+
+            // Second point
+            objectVertex[0] = x1*r;
+            objectVertex[1] = y1*r;
+            objectVertex[2] = z;
+            m3dTransformVector3(transformedVertex, objectVertex, mTransform);
+            glVertex3fv(transformedVertex);
+        }
+        glEnd();
+    }
+}
 
 // Called to draw scene
 void RenderScene(void)
-    {
-    // Earth and Moon angle of revolution
-    static float fMoonRot = 0.0f;
-    static float fEarthRot = 0.0f;
+{
+    M3DMatrix44f transformationMatrix;
+    static GLfloat yRot = 0.0f;
 
-    // Clear the window with current clearing color
+    yRot += 0.5f;
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Save the matrix state and do the rotations
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
+    m3dRotationMatrix44(transformationMatrix,m3dDegToRad(yRot),\
+                        0.0f,1.0f,0.0f);
+    transformationMatrix[12] = 0.0f;
+    transformationMatrix[13] = 0.0f;
+    transformationMatrix[14] = -2.5f;
 
-    // Translate the whole scene out and into view
-    glTranslatef(0.0f, 0.0f, -300.0f);
+    DrawTorus(transformationMatrix);
 
-    // Set material color, Red
-    // Sun
-        glDisable(GL_LIGHTING);
-    glColor3ub(255, 255, 0);
-    glutSolidSphere(15.0f, 30, 17);
-        glEnable(GL_LIGHTING);
-
-    // Move the light after we draw the sun!
-    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
-
-    // Rotate coordinate system
-    glRotatef(fEarthRot, 0.0f, 1.0f, 0.0f);
-
-    // Draw the Earth
-    glColor3ub(0,0,255);
-    glTranslatef(105.0f,0.0f,0.0f);
-    glutSolidSphere(15.0f, 30, 17);
-
-
-    // Rotate from Earth based coordinates and draw Moon
-    glColor3ub(200,200,200);
-    glRotatef(fMoonRot,0.0f, 1.0f, 0.0f);
-    glTranslatef(30.0f, 0.0f, 0.0f);
-    fMoonRot+= 15.0f;
-    if(fMoonRot > 360.0f)
-        fMoonRot = 0.0f;
-
-    glutSolidSphere(6.0f, 30, 17);
-
-    // Restore the matrix state
-    glPopMatrix();	// Modelview matrix
-
-
-    // Step earth orbit 5 degrees
-    fEarthRot += 5.0f;
-    if(fEarthRot > 360.0f)
-        fEarthRot = 0.0f;
-
-    // Show the image
     glutSwapBuffers();
-    }
+
+}
 
 
 // This function does any needed initialization on the rendering
 // context.
 void SetupRC()
-    {
-    // Light values and coordinates
-    glEnable(GL_DEPTH_TEST);	// Hidden surface removal
-    glFrontFace(GL_CCW);		// Counter clock-wise polygons face out
-    glEnable(GL_CULL_FACE);		// Do not calculate inside of jet
+{
+    glClearColor(0.0f,0.0f,0.5f,1.0f);
 
-    // Enable lighting
-    glEnable(GL_LIGHTING);
-
-    // Setup and enable light 0
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT,whiteLight);
-    glLightfv(GL_LIGHT0,GL_DIFFUSE,sourceLight);
-    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
-    glEnable(GL_LIGHT0);
-
-    // Enable color tracking
-    glEnable(GL_COLOR_MATERIAL);
-
-    // Set Material properties to follow glColor values
-    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
-
-    // Black blue background
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
-    }
+    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+}
 
 
 void TimerFunc(int value)
     {
     glutPostRedisplay();
-    glutTimerFunc(100, TimerFunc, 1);
+    glutTimerFunc(33, TimerFunc, 1);
     }
 
 void ChangeSize(int w, int h)
@@ -128,7 +118,7 @@ void ChangeSize(int w, int h)
     glLoadIdentity();
 
     // field of view of 45 degrees, near and far planes 1.0 and 425
-    gluPerspective(45.0f, fAspect, 1.0, 425.0);
+    gluPerspective(35.0f, fAspect, 1.0f, 50.0f);
 
     // Modelview matrix reset
     glMatrixMode(GL_MODELVIEW);
@@ -143,12 +133,12 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("Earth/Moon/Sun System");
+    glutCreateWindow("Manual Transformations Demo");
 
     glutReshapeFunc(ChangeSize);
     glutDisplayFunc(RenderScene);
 
-    glutTimerFunc(250, TimerFunc, 1);
+    glutTimerFunc(33, TimerFunc, 1);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
