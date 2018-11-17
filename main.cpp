@@ -255,10 +255,16 @@ void SetupRC()
 //    glLightModelfv(GL_LIGHT_MODEL_AMBIENT,ambientLight);
     glLightfv(GL_LIGHT0,GL_AMBIENT,ambientLight);
     glLightfv(GL_LIGHT0,GL_DIFFUSE,diffuseLight);
+
+    // 设置光源位置
+    GLfloat lightPos[] = {0.0f,50.0f,50.0f,1.0f};
+    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
     glEnable(GL_LIGHT0);
 
     glEnable(GL_COLOR_MATERIAL);    // 启用材料颜色追踪
     glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
+
+
 
     // Nice light blue
     glClearColor(0.0f, 0.0f, 1.0f,1.0f);
