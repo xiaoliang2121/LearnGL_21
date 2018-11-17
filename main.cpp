@@ -12,111 +12,301 @@
 static GLfloat xRot = 0.0f;
 static GLfloat yRot = 0.0f;
 
+// These values need to be available globally
 // Light values and coordinates
-GLfloat	 lightPos[] = { 0.0f, 0.0f, 75.0f, 1.0f };
+GLfloat  ambientLight[] = { 0.3f, 0.3f, 0.3f, 1.0f };
+GLfloat  diffuseLight[] = { 0.7f, 0.7f, 0.7f, 1.0f };
 GLfloat  specular[] = { 1.0f, 1.0f, 1.0f, 1.0f};
+GLfloat	 lightPos[] = { -75.0f, 150.0f, -50.0f, 0.0f };
 GLfloat  specref[] =  { 1.0f, 1.0f, 1.0f, 1.0f };
-GLfloat  ambientLight[] = { 0.5f, 0.5f, 0.5f, 1.0f};
-GLfloat  spotDir[] = { 0.0f, 0.0f, -1.0f };
 
-// Flags for effects
-#define MODE_FLAT 1
-#define MODE_SMOOTH  2
-#define MODE_VERYLOW 3
-#define MODE_MEDIUM  4
-#define MODE_VERYHIGH 5
+// Transformation matrix to project shadow
+M3DMatrix44f shadowMat;
 
-int iShade = MODE_FLAT;
-int iTess = MODE_VERYLOW;
 
-///////////////////////////////////////////////////////////////////////////////
-// Reset flags as appropriate in response to menu selections
-void ProcessMenu(int value)
+////////////////////////////////////////////////
+// This function just specifically draws the jet
+void DrawJet(int nShadow)
     {
-    switch(value)
+    M3DVector3f vNormal;	// Storeage for calculated surface normal
+
+    // Nose Cone /////////////////////////////
+    // Set material color, note we only have to set to black
+    // for the shadow once
+    if(nShadow == 0)
+           glColor3ub(128, 128, 128);
+    else
+            glColor3ub(0,0,0);
+
+
+    // Nose Cone - Points straight down
+    // Set material color
+    glBegin(GL_TRIANGLES);
+        glNormal3f(0.0f, -1.0f, 0.0f);
+        glNormal3f(0.0f, -1.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, 60.0f);
+        glVertex3f(-15.0f, 0.0f, 30.0f);
+        glVertex3f(15.0f,0.0f,30.0f);
+
+
+        // Verticies for this panel
         {
-        case 1:
-            iShade = MODE_FLAT;
-            break;
+        M3DVector3f vPoints[3] = {{ 15.0f, 0.0f,  30.0f},
+                                        { 0.0f,  15.0f, 30.0f},
+                                        { 0.0f,  0.0f,  60.0f}};
 
-        case 2:
-            iShade = MODE_SMOOTH;
-            break;
-
-        case 3:
-            iTess = MODE_VERYLOW;
-            break;
-
-        case 4:
-            iTess = MODE_MEDIUM;
-            break;
-
-        case 5:
-        default:
-            iTess = MODE_VERYHIGH;
-            break;
+        // Calculate the normal for the plane
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
         }
 
-    glutPostRedisplay();
+
+        {
+        M3DVector3f vPoints[3] = {{ 0.0f, 0.0f, 60.0f },
+                                  { 0.0f, 15.0f, 30.0f },
+                                  { -15.0f, 0.0f, 30.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+
+        // Body of the Plane ////////////////////////
+        {
+        M3DVector3f vPoints[3] = {{ -15.0f, 0.0f, 30.0f },
+                                  { 0.0f, 15.0f, 30.0f },
+                                  { 0.0f, 0.0f, -56.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+        {
+        M3DVector3f vPoints[3] = {{ 0.0f, 0.0f, -56.0f },
+                                  { 0.0f, 15.0f, 30.0f },
+                                  { 15.0f,0.0f,30.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+
+        glNormal3f(0.0f, -1.0f, 0.0f);
+        glVertex3f(15.0f,0.0f,30.0f);
+        glVertex3f(-15.0f, 0.0f, 30.0f);
+        glVertex3f(0.0f, 0.0f, -56.0f);
+
+        ///////////////////////////////////////////////
+        // Left wing
+        // Large triangle for bottom of wing
+        {
+        M3DVector3f vPoints[3] = {{ 0.0f,2.0f,27.0f },
+                                  { -60.0f, 2.0f, -8.0f },
+                                  { 60.0f, 2.0f, -8.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+
+        {
+        M3DVector3f vPoints[3] = {{ 60.0f, 2.0f, -8.0f},
+                                   {0.0f, 7.0f, -8.0f},
+                                   {0.0f,2.0f,27.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+        {
+        M3DVector3f vPoints[3] = {{60.0f, 2.0f, -8.0f},
+                    {-60.0f, 2.0f, -8.0f},
+                    {0.0f,7.0f,-8.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+        {
+        M3DVector3f vPoints[3] = {{0.0f,2.0f,27.0f},
+                                    {0.0f, 7.0f, -8.0f},
+                                    {-60.0f, 2.0f, -8.0f}};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+
+        // Tail section///////////////////////////////
+        // Bottom of back fin
+        glNormal3f(0.0f, -1.0f, 0.0f);
+        glVertex3f(-30.0f, -0.50f, -57.0f);
+        glVertex3f(30.0f, -0.50f, -57.0f);
+        glVertex3f(0.0f,-0.50f,-40.0f);
+
+        {
+        M3DVector3f vPoints[3] = {{ 0.0f,-0.5f,-40.0f },
+                                  {30.0f, -0.5f, -57.0f},
+                                {0.0f, 4.0f, -57.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+
+        {
+        M3DVector3f vPoints[3] = {{ 0.0f, 4.0f, -57.0f },
+                { -30.0f, -0.5f, -57.0f },
+                { 0.0f,-0.5f,-40.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+        {
+        M3DVector3f vPoints[3] = {{ 30.0f,-0.5f,-57.0f },
+                    { -30.0f, -0.5f, -57.0f },
+                    { 0.0f, 4.0f, -57.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+        {
+        M3DVector3f vPoints[3] = {{ 0.0f,0.5f,-40.0f },
+                    { 3.0f, 0.5f, -57.0f },
+                    { 0.0f, 25.0f, -65.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+
+        {
+        M3DVector3f vPoints[3] = {{ 0.0f, 25.0f, -65.0f },
+                    { -3.0f, 0.5f, -57.0f},
+                    { 0.0f,0.5f,-40.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+        {
+        M3DVector3f vPoints[3] = {{ 3.0f,0.5f,-57.0f },
+                    { -3.0f, 0.5f, -57.0f },
+                    { 0.0f, 25.0f, -65.0f }};
+
+        m3dFindNormal(vNormal, vPoints[0], vPoints[1], vPoints[2]);
+        glNormal3fv(vNormal);
+        glVertex3fv(vPoints[0]);
+        glVertex3fv(vPoints[1]);
+        glVertex3fv(vPoints[2]);
+        }
+
+
+        glEnd();
     }
-
-
 
 // Called to draw scene
 void RenderScene(void)
     {
-    if(iShade == MODE_FLAT)
-        glShadeModel(GL_FLAT);
-    else // 	iShade = MODE_SMOOTH;
-        glShadeModel(GL_SMOOTH);
-
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // First place the light
-    // Save the coordinate transformation
+    // Draw the ground, we do manual shading to a darker green
+    // in the background to give the illusion of depth
+    glBegin(GL_QUADS);
+        glColor3ub(0,32,0);
+        glVertex3f(400.0f, -150.0f, -200.0f);
+        glVertex3f(-400.0f, -150.0f, -200.0f);
+        glColor3ub(0,255,0);
+        glVertex3f(-400.0f, -150.0f, 200.0f);
+        glVertex3f(400.0f, -150.0f, 200.0f);
+    glEnd();
+
+    // Save the matrix state and do the rotations
     glPushMatrix();
-        // Rotate coordinate system
-        glRotatef(yRot, 0.0f, 1.0f, 0.0f);
-        glRotatef(xRot, 1.0f, 0.0f, 0.0f);
 
-        // Specify new position and direction in rotated coords.
-        glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
-        glLightfv(GL_LIGHT0,GL_SPOT_DIRECTION,spotDir);
+    // Draw jet at new orientation, put light in correct position
+    // before rotating the jet
+    glEnable(GL_LIGHTING);
+    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
+    glRotatef(xRot, 1.0f, 0.0f, 0.0f);
+    glRotatef(yRot, 0.0f, 1.0f, 0.0f);
 
-        // Draw a red cone to enclose the light source
-        glColor3ub(255,0,0);
+    DrawJet(0);
 
-        // Translate origin to move the cone out to where the light
-        // is positioned.
-        glTranslatef(lightPos[0],lightPos[1],lightPos[2]);
-        glutSolidCone(4.0f,6.0f,15,15);
-
-        // Draw a smaller displaced sphere to denote the light bulb
-        // Save the lighting state variables
-        glPushAttrib(GL_LIGHTING_BIT);
-
-            // Turn off lighting and specify a bright yellow sphere
-            glDisable(GL_LIGHTING);
-            glColor3ub(255,255,0);
-            glutSolidSphere(3.0f, 15, 15);
-
-        // Restore lighting state variables
-        glPopAttrib();
-
-    // Restore coordinate transformations
+    // Restore original matrix state
     glPopMatrix();
 
 
-    // Set material color and draw a sphere in the middle
-    glColor3ub(0, 0, 255);
+    // Get ready to draw the shadow and the ground
+    // First disable lighting and save the projection state
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glPushMatrix();
 
-    if(iTess == MODE_VERYLOW)
-        glutSolidSphere(30.0f, 7, 7);
-    else if(iTess == MODE_MEDIUM)
-            glutSolidSphere(30.0f, 15, 15);
-    else //  iTess = MODE_MEDIUM;
-            glutSolidSphere(30.0f, 50, 50);
+    // Multiply by shadow projection matrix
+    glMultMatrixf((GLfloat *)shadowMat);
+
+    // Now rotate the jet around in the new flattend space
+    glRotatef(xRot, 1.0f, 0.0f, 0.0f);
+    glRotatef(yRot, 0.0f, 1.0f, 0.0f);
+
+    // Pass true to indicate drawing shadow
+    DrawJet(1);
+
+    // Restore the projection to normal
+    glPopMatrix();
+
+    // Draw the light source
+    glPushMatrix();
+    glTranslatef(lightPos[0],lightPos[1], lightPos[2]);
+    glColor3ub(255,255,0);
+    glutSolidSphere(5.0f,10,10);
+    glPopMatrix();
+
+    // Restore lighting state variables
+    glEnable(GL_DEPTH_TEST);
 
     // Display the results
     glutSwapBuffers();
@@ -126,27 +316,20 @@ void RenderScene(void)
 // context.
 void SetupRC()
     {
+    // Any three points on the ground (counter clockwise order)
+    M3DVector3f points[3] = {{ -30.0f, -149.0f, -20.0f },
+                            { -30.0f, -149.0f, 20.0f },
+                            { 40.0f, -149.0f, 20.0f }};
+
     glEnable(GL_DEPTH_TEST);	// Hidden surface removal
     glFrontFace(GL_CCW);		// Counter clock-wise polygons face out
-    glEnable(GL_CULL_FACE);		// Do not try to display the back sides
-
-    // Enable lighting
-    glEnable(GL_LIGHTING);
+    glEnable(GL_CULL_FACE);		// Do not calculate inside of jet
 
     // Setup and enable light 0
-    // Supply a slight ambient light so the objects can be seen
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientLight);
-
-    // The light is composed of just a diffuse and specular components
-    glLightfv(GL_LIGHT0,GL_DIFFUSE,ambientLight);
+    glLightfv(GL_LIGHT0,GL_AMBIENT,ambientLight);
+    glLightfv(GL_LIGHT0,GL_DIFFUSE,diffuseLight);
     glLightfv(GL_LIGHT0,GL_SPECULAR,specular);
     glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
-
-    // Specific spot effects
-    // Cut off angle is 60 degrees
-    glLightf(GL_LIGHT0,GL_SPOT_CUTOFF,50.0f);
-
-    // Enable this light in particular
     glEnable(GL_LIGHT0);
 
     // Enable color tracking
@@ -158,11 +341,19 @@ void SetupRC()
     // All materials hereafter have full specular reflectivity
     // with a high shine
     glMaterialfv(GL_FRONT, GL_SPECULAR,specref);
-    glMateriali(GL_FRONT, GL_SHININESS,128);
+    glMateriali(GL_FRONT,GL_SHININESS,128);
 
+    // Light blue background
+    glClearColor(0.0f, 0.0f, 1.0f, 1.0f );
 
-    // Black background
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
+    // Get the plane equation from three points on the ground
+    M3DVector4f vPlaneEquation;
+    m3dGetPlaneEquation(vPlaneEquation, points[0], points[1], points[2]);
+
+    // Calculate projection matrix to draw shadow on the ground
+    m3dMakePlanarShadowMatrix(shadowMat, vPlaneEquation, lightPos);
+
+    glEnable(GL_NORMALIZE);
     }
 
 void SpecialKeys(int key, int x, int y)
@@ -204,6 +395,7 @@ void ChangeSize(int w, int h)
     if(h == 0)
         h = 1;
 
+
     // Set Viewport to window dimensions
     glViewport(0, 0, w, h);
 
@@ -211,34 +403,25 @@ void ChangeSize(int w, int h)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    // Establish viewing volume
-    fAspect = (GLfloat) w / (GLfloat) h;
-    gluPerspective(35.0f, fAspect, 1.0f, 500.0f);
+    fAspect = (GLfloat)w/(GLfloat)h;
+    gluPerspective(60.0f, fAspect, 200.0, 500.0);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslatef(0.0f, 0.0f, -250.0f);
+
+    // Move out Z axis so we can see everything
+    glTranslatef(0.0f, 0.0f, -400.0f);
+    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
     }
 
 ///////////////////////////////////////////////////////////
 // Main program entry point
 int main(int argc, char* argv[])
 {
-    int nMenu;
-
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800, 600);
-    glutCreateWindow("Spot Light");
-
-    // Create the Menu
-    nMenu = glutCreateMenu(ProcessMenu);
-    glutAddMenuEntry("Flat Shading",1);
-    glutAddMenuEntry("Smooth Shading",2);
-    glutAddMenuEntry("VL Tess",3);
-    glutAddMenuEntry("MD Tess",4);
-    glutAddMenuEntry("VH Tess",5);
-    glutAttachMenu(GLUT_RIGHT_BUTTON);
+    glutCreateWindow("Shadow");
 
     glutReshapeFunc(ChangeSize);
     glutSpecialFunc(SpecialKeys);
