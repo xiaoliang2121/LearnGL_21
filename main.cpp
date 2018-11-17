@@ -37,7 +37,7 @@ void ChangeSize(int w, int h)
         h = 1;
 
     // Set Viewport to window dimensions
-        glViewport(0, 0, w, h);
+    glViewport(0, 0, w, h);
 
 
     // Set the perspective coordinate system
