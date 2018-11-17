@@ -6,75 +6,68 @@
 
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
+#include <cmath>
 
-// Rotation amounts
-static GLfloat xRot = 0.0f;
-static GLfloat yRot = 0.0f;
+// Lighting values
+GLfloat  whiteLight[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+GLfloat  sourceLight[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+GLfloat	 lightPos[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 
 // Called to draw scene
 void RenderScene(void)
     {
-    // Angle of revolution around the nucleus
-    static GLfloat fElect1 = 0.0f;
+    // Earth and Moon angle of revolution
+    static float fMoonRot = 0.0f;
+    static float fEarthRot = 0.0f;
 
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Reset the modelview matrix
+    // Save the matrix state and do the rotations
     glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    glPushMatrix();
 
     // Translate the whole scene out and into view
-    // This is the initial viewing transformation
-    glTranslatef(0.0f, 0.0f, -100.0f);
+    glTranslatef(0.0f, 0.0f, -300.0f);
 
-    // Red Nucleus
-    glColor3ub(255, 0, 0);
-    glutSolidSphere(10.0f, 15, 15);
+    // Set material color, Red
+    // Sun
+        glDisable(GL_LIGHTING);
+    glColor3ub(255, 255, 0);
+    glutSolidSphere(15.0f, 30, 17);
+        glEnable(GL_LIGHTING);
 
-    // Yellow Electrons
-    glColor3ub(255,255,0);
+    // Move the light after we draw the sun!
+    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
 
-    // First Electron Orbit
-    // Save viewing transformation
-    glPushMatrix();
+    // Rotate coordinate system
+    glRotatef(fEarthRot, 0.0f, 1.0f, 0.0f);
 
-    // Rotate by angle of revolution
-    glRotatef(fElect1, 0.0f, 1.0f, 0.0f);
-
-    // Translate out from origin to orbit distance
-    glTranslatef(90.0f, 0.0f, 0.0f);
-
-    // Draw the electron
-    glutSolidSphere(6.0f, 15, 15);
+    // Draw the Earth
+    glColor3ub(0,0,255);
+    glTranslatef(105.0f,0.0f,0.0f);
+    glutSolidSphere(15.0f, 30, 17);
 
 
-    // Restore the viewing transformation
-    glPopMatrix();
+    // Rotate from Earth based coordinates and draw Moon
+    glColor3ub(200,200,200);
+    glRotatef(fMoonRot,0.0f, 1.0f, 0.0f);
+    glTranslatef(30.0f, 0.0f, 0.0f);
+    fMoonRot+= 15.0f;
+    if(fMoonRot > 360.0f)
+        fMoonRot = 0.0f;
 
-    // Second Electron Orbit
-    glPushMatrix();
-    glRotatef(45.0f, 0.0f, 0.0f, 1.0f);
-    glRotatef(fElect1, 0.0f, 1.0f, 0.0f);
-    glTranslatef(-70.0f, 0.0f, 0.0f);
-    glutSolidSphere(6.0f, 15, 15);
-    glPopMatrix();
+    glutSolidSphere(6.0f, 30, 17);
 
-
-    // Third Electron Orbit
-    glPushMatrix();
-    glRotatef(360.0f-45.0f,0.0f, 0.0f, 1.0f);
-    glRotatef(fElect1, 0.0f, 1.0f, 0.0f);
-    glTranslatef(0.0f, 0.0f, 60.0f);
-    glutSolidSphere(6.0f, 15, 15);
-    glPopMatrix();
+    // Restore the matrix state
+    glPopMatrix();	// Modelview matrix
 
 
-    // Increment the angle of revolution
-    fElect1 += 10.0f;
-    if(fElect1 > 360.0f)
-        fElect1 = 0.0f;
+    // Step earth orbit 5 degrees
+    fEarthRot += 5.0f;
+    if(fEarthRot > 360.0f)
+        fEarthRot = 0.0f;
 
     // Show the image
     glutSwapBuffers();
@@ -85,43 +78,30 @@ void RenderScene(void)
 // context.
 void SetupRC()
     {
+    // Light values and coordinates
     glEnable(GL_DEPTH_TEST);	// Hidden surface removal
     glFrontFace(GL_CCW);		// Counter clock-wise polygons face out
     glEnable(GL_CULL_FACE);		// Do not calculate inside of jet
 
-    // Black background
+    // Enable lighting
+    glEnable(GL_LIGHTING);
+
+    // Setup and enable light 0
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT,whiteLight);
+    glLightfv(GL_LIGHT0,GL_DIFFUSE,sourceLight);
+    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
+    glEnable(GL_LIGHT0);
+
+    // Enable color tracking
+    glEnable(GL_COLOR_MATERIAL);
+
+    // Set Material properties to follow glColor values
+    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+
+    // Black blue background
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
     }
 
-void SpecialKeys(int key, int x, int y)
-    {
-    if(key == GLUT_KEY_UP)
-        xRot-= 5.0f;
-
-    if(key == GLUT_KEY_DOWN)
-        xRot += 5.0f;
-
-    if(key == GLUT_KEY_LEFT)
-        yRot -= 5.0f;
-
-    if(key == GLUT_KEY_RIGHT)
-        yRot += 5.0f;
-
-    if(key > 356.0f)
-        xRot = 0.0f;
-
-    if(key < -1.0f)
-        xRot = 355.0f;
-
-    if(key > 356.0f)
-        yRot = 0.0f;
-
-    if(key < -1.0f)
-        yRot = 355.0f;
-
-    // Refresh the Window
-    glutPostRedisplay();
-    }
 
 void TimerFunc(int value)
     {
@@ -129,10 +109,8 @@ void TimerFunc(int value)
     glutTimerFunc(100, TimerFunc, 1);
     }
 
-
 void ChangeSize(int w, int h)
     {
-//    GLfloat nRange = 100.0f;
     GLfloat fAspect;
 
     // Prevent a divide by zero
@@ -142,23 +120,21 @@ void ChangeSize(int w, int h)
     // Set Viewport to window dimensions
     glViewport(0, 0, w, h);
 
+    // Calculate aspect ratio of the window
+    fAspect = (GLfloat)w/(GLfloat)h;
 
-    // Reset coordinate system
+    // Set the perspective coordinate system
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    // Establish clipping volume (left, right, bottom, top, near, far)
-//    if (w <= h)
-//        glOrtho (-nRange, nRange, nRange*h/w, -nRange*h/w, -nRange*2.0f, nRange*2.0f);
-//    else
-//        glOrtho (-nRange*w/h, nRange*w/h, nRange, -nRange, -nRange*2.0f, nRange*2.0f);
+    // field of view of 45 degrees, near and far planes 1.0 and 425
+    gluPerspective(45.0f, fAspect, 1.0, 425.0);
 
-    fAspect = (float)w/(float)h;
-    gluPerspective(45.0,fAspect,1.0,500.0);
-
+    // Modelview matrix reset
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     }
+
 
 ///////////////////////////////////////////////////////////
 // Main program entry point
@@ -167,13 +143,12 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("OpenGL Atom");
+    glutCreateWindow("Earth/Moon/Sun System");
 
     glutReshapeFunc(ChangeSize);
-    glutSpecialFunc(SpecialKeys);
     glutDisplayFunc(RenderScene);
 
-    glutTimerFunc(500, TimerFunc, 1);
+    glutTimerFunc(250, TimerFunc, 1);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
