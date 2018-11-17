@@ -245,6 +245,8 @@ void SetupRC()
 {
     GLfloat ambientLight[] = {0.3f,0.3f,0.3f,1.0f};
     GLfloat diffuseLight[] = {0.7f,0.7f,0.7f,1.0f};
+    GLfloat  specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    GLfloat  specref[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     glEnable(GL_DEPTH_TEST);	// Hidden surface removal
     glEnable(GL_CULL_FACE);		// Do not calculate inside of jet
@@ -255,6 +257,7 @@ void SetupRC()
 //    glLightModelfv(GL_LIGHT_MODEL_AMBIENT,ambientLight);
     glLightfv(GL_LIGHT0,GL_AMBIENT,ambientLight);
     glLightfv(GL_LIGHT0,GL_DIFFUSE,diffuseLight);
+    glLightfv(GL_LIGHT0,GL_SPECULAR,specular);
 
     // 设置光源位置
     GLfloat lightPos[] = {0.0f,50.0f,50.0f,1.0f};
@@ -264,7 +267,8 @@ void SetupRC()
     glEnable(GL_COLOR_MATERIAL);    // 启用材料颜色追踪
     glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
 
-
+    glMaterialfv(GL_FRONT,GL_SPECULAR,specref);
+    glMateriali(GL_FRONT,GL_SHININESS,128);
 
     // Nice light blue
     glClearColor(0.0f, 0.0f, 1.0f,1.0f);
