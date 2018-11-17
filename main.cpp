@@ -18,138 +18,136 @@ void RenderScene(void)
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // Save matrix state and do the rotation
     glPushMatrix();
-
     glRotatef(xRot, 1.0f, 0.0f, 0.0f);
     glRotatef(yRot, 0.0f, 1.0f, 0.0f);
 
 
-    // Draw six quads
-    glBegin(GL_QUADS);
-        // Front Face
-        // White
-        glColor3ub((GLubyte) 255, (GLubyte)255, (GLubyte)255);
-        glVertex3f(50.0f,50.0f,50.0f);
-
-        // Yellow
-        glColor3ub((GLubyte) 255, (GLubyte)255, (GLubyte)0);
-        glVertex3f(50.0f,-50.0f,50.0f);
-
-        // Red
-        glColor3ub((GLubyte) 255, (GLubyte)0, (GLubyte)0);
-        glVertex3f(-50.0f,-50.0f,50.0f);
-
-        // Magenta
-        glColor3ub((GLubyte) 255, (GLubyte)0, (GLubyte)255);
-        glVertex3f(-50.0f,50.0f,50.0f);
-
-
-    // Back Face
-        // Cyan
-        glColor3f(0.0f, 1.0f, 1.0f);
-        glVertex3f(50.0f,50.0f,-50.0f);
-
-        // Green
-        glColor3f(0.0f, 1.0f, 0.0f);
-        glVertex3f(50.0f,-50.0f,-50.0f);
+    // Nose Cone /////////////////////////////
+    // White
+    glColor3ub(255, 255, 255);
+    glBegin(GL_TRIANGLES);
+        glVertex3f(0.0f, 0.0f, 60.0f);
+        glVertex3f(-15.0f, 0.0f, 30.0f);
+        glVertex3f(15.0f,0.0f,30.0f);
 
         // Black
-        glColor3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(-50.0f,-50.0f,-50.0f);
-
-        // Blue
-        glColor3f(0.0f, 0.0f, 1.0f);
-        glVertex3f(-50.0f,50.0f,-50.0f);
-
-    // Top Face
-        // Cyan
-        glColor3f(0.0f, 1.0f, 1.0f);
-        glVertex3f(50.0f,50.0f,-50.0f);
-
-        // White
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glVertex3f(50.0f,50.0f,50.0f);
-
-        // Magenta
-        glColor3f(1.0f, 0.0f, 1.0f);
-        glVertex3f(-50.0f,50.0f,50.0f);
-
-        // Blue
-        glColor3f(0.0f, 0.0f, 1.0f);
-        glVertex3f(-50.0f,50.0f,-50.0f);
-
-    // Bottom Face
-        // Green
-        glColor3f(0.0f, 1.0f, 0.0f);
-        glVertex3f(50.0f,-50.0f,-50.0f);
-
-        // Yellow
-        glColor3f(1.0f, 1.0f, 0.0f);
-        glVertex3f(50.0f,-50.0f,50.0f);
+        glColor3ub(0,0,0);
+        glVertex3f(15.0f,0.0f,30.0f);
+        glVertex3f(0.0f, 15.0f, 30.0f);
+        glVertex3f(0.0f, 0.0f, 60.0f);
 
         // Red
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glVertex3f(-50.0f,-50.0f,50.0f);
+        glColor3ub(255,0,0);
+        glVertex3f(0.0f, 0.0f, 60.0f);
+        glVertex3f(0.0f, 15.0f, 30.0f);
+        glVertex3f(-15.0f,0.0f,30.0f);
 
-        // Black
-        glColor3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(-50.0f,-50.0f,-50.0f);
 
-    // Left face
-        // White
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glVertex3f(50.0f,50.0f,50.0f);
-
-        // Cyan
-        glColor3f(0.0f, 1.0f, 1.0f);
-        glVertex3f(50.0f,50.0f,-50.0f);
-
+    // Body of the Plane ////////////////////////
         // Green
-        glColor3f(0.0f, 1.0f, 0.0f);
-        glVertex3f(50.0f,-50.0f,-50.0f);
+        glColor3ub(0,255,0);
+        glVertex3f(-15.0f,0.0f,30.0f);
+        glVertex3f(0.0f, 15.0f, 30.0f);
+        glVertex3f(0.0f, 0.0f, -56.0f);
 
-        // Yellow
-        glColor3f(1.0f, 1.0f, 0.0f);
-        glVertex3f(50.0f,-50.0f,50.0f);
+        glColor3ub(255,255,0);
+        glVertex3f(0.0f, 0.0f, -56.0f);
+        glVertex3f(0.0f, 15.0f, 30.0f);
+        glVertex3f(15.0f,0.0f,30.0f);
 
-    // Right face
-        // Magenta
-        glColor3f(1.0f, 0.0f, 1.0f);
-        glVertex3f(-50.0f,50.0f,50.0f);
+        glColor3ub(0, 255, 255);
+        glVertex3f(15.0f,0.0f,30.0f);
+        glVertex3f(-15.0f, 0.0f, 30.0f);
+        glVertex3f(0.0f, 0.0f, -56.0f);
 
-        // Blue
-        glColor3f(0.0f, 0.0f, 1.0f);
-        glVertex3f(-50.0f,50.0f,-50.0f);
+    ///////////////////////////////////////////////
+    // Left wing
+    // Large triangle for bottom of wing
+        glColor3ub(128,128,128);
+        glVertex3f(0.0f,2.0f,27.0f);
+        glVertex3f(-60.0f, 2.0f, -8.0f);
+        glVertex3f(60.0f, 2.0f, -8.0f);
 
-        // Black
-        glColor3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(-50.0f,-50.0f,-50.0f);
+        glColor3ub(64,64,64);
+        glVertex3f(60.0f, 2.0f, -8.0f);
+        glVertex3f(0.0f, 7.0f, -8.0f);
+        glVertex3f(0.0f,2.0f,27.0f);
 
-        // Red
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glVertex3f(-50.0f,-50.0f,50.0f);
-    glEnd();
+        glColor3ub(192,192,192);
+        glVertex3f(60.0f, 2.0f, -8.0f);
+        glVertex3f(-60.0f, 2.0f, -8.0f);
+        glVertex3f(0.0f,7.0f,-8.0f);
+
+    // Other wing top section
+        glColor3ub(64,64,64);
+        glVertex3f(0.0f,2.0f,27.0f);
+        glVertex3f(0.0f, 7.0f, -8.0f);
+        glVertex3f(-60.0f, 2.0f, -8.0f);
+
+    // Tail section///////////////////////////////
+    // Bottom of back fin
+        glColor3ub(255,128,255);
+        glVertex3f(-30.0f, -0.50f, -57.0f);
+        glVertex3f(30.0f, -0.50f, -57.0f);
+        glVertex3f(0.0f,-0.50f,-40.0f);
+
+        // top of left side
+        glColor3ub(255,128,0);
+        glVertex3f(0.0f,-0.5f,-40.0f);
+        glVertex3f(30.0f, -0.5f, -57.0f);
+        glVertex3f(0.0f, 4.0f, -57.0f);
+
+        // top of right side
+        glColor3ub(255,128,0);
+        glVertex3f(0.0f, 4.0f, -57.0f);
+        glVertex3f(-30.0f, -0.5f, -57.0f);
+        glVertex3f(0.0f,-0.5f,-40.0f);
+
+        // back of bottom of tail
+        glColor3ub(255,255,255);
+        glVertex3f(30.0f,-0.5f,-57.0f);
+        glVertex3f(-30.0f, -0.5f, -57.0f);
+        glVertex3f(0.0f, 4.0f, -57.0f);
+
+        // Top of Tail section left
+        glColor3ub(255,0,0);
+        glVertex3f(0.0f,0.5f,-40.0f);
+        glVertex3f(3.0f, 0.5f, -57.0f);
+        glVertex3f(0.0f, 25.0f, -65.0f);
+
+        glColor3ub(255,0,0);
+        glVertex3f(0.0f, 25.0f, -65.0f);
+        glVertex3f(-3.0f, 0.5f, -57.0f);
+        glVertex3f(0.0f,0.5f,-40.0f);
+
+        // Back of horizontal section
+        glColor3ub(128,128,128);
+        glVertex3f(3.0f,0.5f,-57.0f);
+        glVertex3f(-3.0f, 0.5f, -57.0f);
+        glVertex3f(0.0f, 25.0f, -65.0f);
+
+    glEnd(); // Of Jet
 
     glPopMatrix();
 
-    // Show the graphics
+    // Display the results
     glutSwapBuffers();
     }
 
 // This function does any needed initialization on the rendering
 // context.
 void SetupRC()
-{
-    // Black background
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
+    {
+    glEnable(GL_DEPTH_TEST);	// Hidden surface removal
+    glEnable(GL_CULL_FACE);		// Do not calculate inside of jet
+    glFrontFace(GL_CCW);		// Counter clock-wise polygons face out
 
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_DITHER);
-    glShadeModel(GL_SMOOTH);
-}
+    // Nice light blue
+    glClearColor(0.0f, 0.0f, 05.f,1.0f);
+    }
 
-/////////////////////////////////////////////////
-// Get Arrow Keys
 void SpecialKeys(int key, int x, int y)
     {
     if(key == GLUT_KEY_UP)
@@ -182,9 +180,8 @@ void SpecialKeys(int key, int x, int y)
 
 
 void ChangeSize(int w, int h)
-{
-    GLfloat fAspect;
-
+    {
+    GLfloat nRange = 80.0f;
     // Prevent a divide by zero
     if(h == 0)
         h = 1;
@@ -196,13 +193,15 @@ void ChangeSize(int w, int h)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    fAspect = (GLfloat)w / (GLfloat)h;
-    gluPerspective(35.0f, fAspect, 1.0f, 1000.0f);
+    // Establish clipping volume (left, right, bottom, top, near, far)
+    if (w <= h)
+        glOrtho (-nRange, nRange, -nRange*h/w, nRange*h/w, -nRange, nRange);
+    else
+        glOrtho (-nRange*w/h, nRange*w/h, -nRange, nRange, -nRange, nRange);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslatef(0.0f, 0.0f, -400.0f);
-}
+    }
 
 ///////////////////////////////////////////////////////////
 // Main program entry point
@@ -211,7 +210,7 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("RGB Cube");
+    glutCreateWindow("Jet");
 
     glutReshapeFunc(ChangeSize);
     glutSpecialFunc(SpecialKeys);
