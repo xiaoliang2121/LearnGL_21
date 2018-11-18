@@ -6,33 +6,24 @@
 
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
-#include "glframe.h"
 #include <cmath>
-#include <cstdlib>
-
-#define NUM_SPHERES 30
-GLFrame spheres[NUM_SPHERES];
-GLFrame frameCamera;
 
 // Light and material Data
 GLfloat fLightPos[4]   = { -100.0f, 100.0f, 50.0f, 1.0f };  // Point source
+GLfloat fLightPosMirror[4] = { -100.0f, -100.0f, 50.0f, 1.0f };
 GLfloat fNoLight[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 GLfloat fLowLight[] = { 0.25f, 0.25f, 0.25f, 1.0f };
 GLfloat fBrightLight[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-M3DMatrix44f mShadowMatrix;
+static GLfloat yRot = 0.0f;         // Rotation angle for animation
 
-/**
- * @brief SetupRC This function does any needed initialization on the rendering context.
- */
-void SetupRC(){
-    int iSphere;
 
-    // Calculate shadow matrix
-    M3DVector3f vPoints[3] = {{ 0.0f, -0.4f, 0.0f },
-                             { 10.0f, -0.4f, 0.0f },
-                             { 5.0f, -0.4f, -5.0f }};
-
+//////////////////////////////////////////////////////////////////
+// This function does any needed initialization on the rendering
+// context.
+void SetupRC()
+{
+    // Grayish background
     glClearColor(fLowLight[0], fLowLight[1], fLowLight[2], fLowLight[3]);
 
     // Cull backs of polygons
@@ -42,148 +33,129 @@ void SetupRC(){
     glEnable(GL_DEPTH_TEST);
 
     // Setup light parameters
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT,fNoLight);
-    glLightfv(GL_LIGHT0,GL_AMBIENT,fLowLight);
-    glLightfv(GL_LIGHT0,GL_DIFFUSE,fBrightLight);
-    glLightfv(GL_LIGHT0,GL_SPECULAR,fBrightLight);
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, fNoLight);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, fLowLight);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, fBrightLight);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, fBrightLight);
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
 
-    // Get the plane equation from three points on the ground
-    M3DVector4f vPlaneEquation;
-    m3dGetPlaneEquation(vPlaneEquation,vPoints[0],vPoints[1],vPoints[2]);
-
-    // Calculate projection matrix to draw shadow on the ground
-    m3dMakePlanarShadowMatrix(mShadowMatrix,vPlaneEquation,fLightPos);
-
-//    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
     // Mostly use material tracking
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
     glMateriali(GL_FRONT, GL_SHININESS, 128);
-
-    // Randomly place the sphere inhabitants
-    for(iSphere=0; iSphere<NUM_SPHERES;  iSphere++){
-        float x = (float)((rand()%400)-200)*0.1f;
-        float z = (float)((rand()%400)-200)*0.1f;
-
-        spheres[iSphere].SetOrigin(x,0.0f,z);
-    }
 }
 
-/**
- * @brief DrawGround Draw a gridded ground
- */
-void DrawGround(void){
+
+///////////////////////////////////////////////////////////
+// Draw the ground as a series of triangle strips. The
+// shading model and colors are set such that we end up
+// with a black and white checkerboard pattern.
+void DrawGround(void)
+    {
     GLfloat fExtent = 20.0f;
-    GLfloat fStep = 1.0f;
-    GLfloat y = -0.4f;
+    GLfloat fStep = 0.5f;
+    GLfloat y = 0.0f;
+    GLfloat fColor;
     GLfloat iStrip, iRun;
+    GLint iBounce = 0;
 
-    for(iStrip=-fExtent; iStrip<=fExtent; iStrip+=fStep)
-    {
-        glBegin(GL_TRIANGLE_STRIP);
-            glNormal3f(0.0f,1.0f,0.0f);
-
-            for(iRun=fExtent; iRun>=-fExtent; iRun-=fStep)
-            {
-                glVertex3f(iStrip,y,iRun);
-                glVertex3f(iStrip+fStep,y,iRun);
-            }
-        glEnd();
-    }
-}
-
-// Draw random inhabitants and the rotating torus/sphere duo
-/**
- * @brief DrawInhabitants
- * @param nShadow
- */
-void DrawInhabitants(GLint nShadow){
-    static GLfloat yRot = 0.0f;
-    GLint i;
-
-    if(nShadow == 0)
-        yRot += 0.5f;
-    else
-        glColor3f(0.0f,0.0f,0.0f);
-
-    if(nShadow == 0)
-        glColor3f(0.0f,1.0f,0.0f);
-
-    for(i=0; i<NUM_SPHERES; i++)
-    {
-        glPushMatrix();
-            spheres[i].ApplyActorTransform();
-            glutSolidSphere(0.3f,17,9);
-        glPopMatrix();
-    }
-
-    glPushMatrix();
-        glTranslatef(0.0f,0.1f,-2.5f);
-
-        if(nShadow == 0)
-            glColor3f(0.0f,0.0f,1.0f);
-
-        glPushMatrix();
-            glRotatef(-yRot*2.0f,0.0f,1.0f,0.0f);
-            glTranslatef(1.0f,0.0f,0.0f);
-            glutSolidSphere(0.1f,17,9);
-        glPopMatrix();
-
-        if(nShadow == 0)
+    glShadeModel(GL_FLAT);
+    for(iStrip = -fExtent; iStrip <= fExtent; iStrip += fStep)
         {
-            glColor3f(1.0f,0.0f,0.0f);
-            glMaterialfv(GL_FRONT,GL_SPECULAR,fBrightLight);
+        glBegin(GL_TRIANGLE_STRIP);
+            for(iRun = fExtent; iRun >= -fExtent; iRun -= fStep)
+                {
+                if((iBounce %2) == 0)
+                    fColor = 1.0f;
+                else
+                    fColor = 0.0f;
+
+                glColor4f(fColor, fColor, fColor, 0.5f);
+                glVertex3f(iStrip, y, iRun);
+                glVertex3f(iStrip + fStep, y, iRun);
+
+                iBounce++;
+                }
+        glEnd();
         }
+    glShadeModel(GL_SMOOTH);
+    }
 
-        glRotatef(yRot,0.0f,1.0f,0.0f);
-        gltDrawTorus(0.35f,0.15f,61,37);
-        glMaterialfv(GL_FRONT,GL_SPECULAR,fNoLight);
+///////////////////////////////////////////////////////////////////////
+// Draw random inhabitants and the rotating torus/sphere duo
+void DrawWorld(void)
+    {
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glPushMatrix();
+        glTranslatef(0.0f, 0.5f, -3.5f);
+
+        glPushMatrix();
+            glRotatef(-yRot * 2.0f, 0.0f, 1.0f, 0.0f);
+            glTranslatef(1.0f, 0.0f, 0.0f);
+            glutSolidSphere(0.1f, 17, 9);
+        glPopMatrix();
+
+
+        glRotatef(yRot, 0.0f, 1.0f, 0.0f);
+        gltDrawTorus(0.35, 0.15, 61, 37);
+
     glPopMatrix();
-}
+    }
 
+
+///////////////////////////////////////////////////////////////////////
+// Called to draw scene
 void RenderScene(void)
-{
+    {
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glPushMatrix();
-        frameCamera.ApplyCameraTransform();
-
-        // Position light before any other transformations
-        glLightfv(GL_LIGHT0,GL_POSITION,fLightPos);
-
-        // Draw the ground
-        glColor3f(0.6f,0.4f,0.1f);
-        DrawGround();
-
-        // Draw shadows first
-        glDisable(GL_DEPTH_TEST);
-        glDisable(GL_LIGHTING);
+        // Move light under floor to light the "reflected" world
+        glLightfv(GL_LIGHT0, GL_POSITION, fLightPosMirror);
         glPushMatrix();
-            glMultMatrixf(mShadowMatrix);
-            DrawInhabitants(1);
+            glFrontFace(GL_CW);             // geometry is mirrored, swap orientation
+            glScalef(1.0f, -1.0f, 1.0f);
+            DrawWorld();
+            glFrontFace(GL_CCW);
         glPopMatrix();
+
+        // Draw the ground transparently over the reflection
+        glDisable(GL_LIGHTING);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        DrawGround();
+        glDisable(GL_BLEND);
         glEnable(GL_LIGHTING);
-        glEnable(GL_DEPTH_TEST);
 
-        // Draw inhabitants normally
-        DrawInhabitants(0);
-
+        // Restore correct lighting and draw the world correctly
+        glLightfv(GL_LIGHT0, GL_POSITION, fLightPos);
+        DrawWorld();
     glPopMatrix();
 
+    // Do the buffer Swap
     glutSwapBuffers();
-//    glutPostRedisplay();
-}
+    }
 
-/**
- * @brief ChangeSize
- * @param w
- * @param h
- */
+
+
+///////////////////////////////////////////////////////////
+// Called by GLUT library when idle (window not being
+// resized or moved)
+void TimerFunc(int value)
+    {
+    yRot += 1.0f;   // Update Rotation
+
+    // Redraw the scene
+    glutPostRedisplay();
+
+    // Reset timer
+    glutTimerFunc(10,TimerFunc, 1);
+    }
+
 void ChangeSize(int w, int h)
-{
+    {
     GLfloat fAspect;
 
     // Prevent a divide by zero, when window is too short
@@ -204,35 +176,8 @@ void ChangeSize(int w, int h)
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-}
-
-void SpecialKeys(int key, int x, int y){
-    if(key == GLUT_KEY_UP)
-        frameCamera.MoveForward(0.1f);
-
-    if(key == GLUT_KEY_DOWN)
-        frameCamera.MoveForward(-0.1f);
-
-    if(key == GLUT_KEY_LEFT)
-        frameCamera.RotateLocalY(0.1f);
-
-    if(key == GLUT_KEY_RIGHT)
-        frameCamera.RotateLocalY(-0.1f);
-
-    // 更新窗口
-    glutPostRedisplay();
-}
-
-/**
- * @brief TimerFunc
- * @param value
- */
-void TimerFunc(int value)
-{
-    // Redraw the scene with new coordinates
-    glutPostRedisplay();
-    glutTimerFunc(33,TimerFunc,1);
-}
+    glTranslatef(0.0f, -0.4f, 0.0f);
+    }
 
 ///////////////////////////////////////////////////////////
 // Main program entry point
@@ -241,13 +186,12 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("OpenGL SphereWorld Demo + Lights and Shadow");
+    glutCreateWindow("OpenGL Blending and Transparency");
 
     glutReshapeFunc(ChangeSize);
     glutDisplayFunc(RenderScene);
-    glutSpecialFunc(SpecialKeys);
 
-    glutTimerFunc(33, TimerFunc, 1);
+    glutTimerFunc(10, TimerFunc, 1);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
