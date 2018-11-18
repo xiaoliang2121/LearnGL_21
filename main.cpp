@@ -33,13 +33,32 @@ void SetupRC(){
                              { 10.0f, -0.4f, 0.0f },
                              { 5.0f, -0.4f, -5.0f }};
 
+    glEnable(GL_MULTISAMPLE_ARB);
+
     glClearColor(fLowLight[0], fLowLight[1], fLowLight[2], fLowLight[3]);
+
+    // Clear stencil buffer with zero, increment by one whenever anybody
+    // draws into it. When stencil function is enabled, only write where
+    // stencil value is zero. This prevents the transparent shadow from drawing
+    // over itself
+    glStencilOp(GL_INCR, GL_INCR, GL_INCR);
+    glClearStencil(0);
+    glStencilFunc(GL_EQUAL, 0x0, 0x01);
+
+    // Setup Fog parameters
+    glEnable(GL_FOG);
+    glFogfv(GL_FOG_COLOR, fLowLight);
+    glFogi(GL_FOG_MODE, GL_LINEAR);
+    glFogf(GL_FOG_START, 5.0f);
+    glFogf(GL_FOG_END, 30.0f);
+    glHint(GL_FOG_HINT, GL_NICEST);
 
     // Cull backs of polygons
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_MULTISAMPLE_ARB);
 
     // Setup light parameters
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT,fNoLight);
@@ -161,10 +180,15 @@ void RenderScene(void)
         // Draw shadows first
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_LIGHTING);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_STENCIL_TEST);
         glPushMatrix();
             glMultMatrixf(mShadowMatrix);
             DrawInhabitants(1);
         glPopMatrix();
+        glDisable(GL_STENCIL_TEST);
+        glDisable(GL_BLEND);
         glEnable(GL_LIGHTING);
         glEnable(GL_DEPTH_TEST);
 
@@ -239,7 +263,8 @@ void TimerFunc(int value)
 int main(int argc, char* argv[])
     {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_STENCIL |
+                        GLUT_MULTISAMPLE);
     glutInitWindowSize(800,600);
     glutCreateWindow("OpenGL SphereWorld Demo + Lights and Shadow");
 
