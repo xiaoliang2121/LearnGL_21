@@ -10,16 +10,57 @@
 #include <cmath>
 #include <cstdlib>
 
-#define NUM_SPHERES 50
+#define NUM_SPHERES 30
 GLFrame spheres[NUM_SPHERES];
 GLFrame frameCamera;
 
+// Light and material Data
+GLfloat fLightPos[4]   = { -100.0f, 100.0f, 50.0f, 1.0f };  // Point source
+GLfloat fNoLight[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+GLfloat fLowLight[] = { 0.25f, 0.25f, 0.25f, 1.0f };
+GLfloat fBrightLight[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+M3DMatrix44f mShadowMatrix;
+
+/**
+ * @brief SetupRC This function does any needed initialization on the rendering context.
+ */
 void SetupRC(){
     int iSphere;
 
-    glClearColor(0.0f,0.0f,0.5f,1.0f);
+    // Calculate shadow matrix
+    M3DVector3f vPoints[3] = {{ 0.0f, -0.4f, 0.0f },
+                             { 10.0f, -0.4f, 0.0f },
+                             { 5.0f, -0.4f, -5.0f }};
 
-    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+    glClearColor(fLowLight[0], fLowLight[1], fLowLight[2], fLowLight[3]);
+
+    // Cull backs of polygons
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+
+    // Setup light parameters
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT,fNoLight);
+    glLightfv(GL_LIGHT0,GL_AMBIENT,fLowLight);
+    glLightfv(GL_LIGHT0,GL_DIFFUSE,fBrightLight);
+    glLightfv(GL_LIGHT0,GL_SPECULAR,fBrightLight);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+
+    // Get the plane equation from three points on the ground
+    M3DVector4f vPlaneEquation;
+    m3dGetPlaneEquation(vPlaneEquation,vPoints[0],vPoints[1],vPoints[2]);
+
+    // Calculate projection matrix to draw shadow on the ground
+    m3dMakePlanarShadowMatrix(mShadowMatrix,vPlaneEquation,fLightPos);
+
+//    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+    // Mostly use material tracking
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+    glMateriali(GL_FRONT, GL_SHININESS, 128);
 
     // Randomly place the sphere inhabitants
     for(iSphere=0; iSphere<NUM_SPHERES;  iSphere++){
@@ -37,58 +78,103 @@ void DrawGround(void){
     GLfloat fExtent = 20.0f;
     GLfloat fStep = 1.0f;
     GLfloat y = -0.4f;
-    GLfloat iLine;
+    GLfloat iStrip, iRun;
 
-    glBegin(GL_LINES);
-        for(iLine=-fExtent; iLine<=fExtent; iLine+=fStep)
+    for(iStrip=-fExtent; iStrip<=fExtent; iStrip+=fStep)
+    {
+        glBegin(GL_TRIANGLE_STRIP);
+            glNormal3f(0.0f,1.0f,0.0f);
+
+            for(iRun=fExtent; iRun>=-fExtent; iRun-=fStep)
+            {
+                glVertex3f(iStrip,y,iRun);
+                glVertex3f(iStrip+fStep,y,iRun);
+            }
+        glEnd();
+    }
+}
+
+// Draw random inhabitants and the rotating torus/sphere duo
+/**
+ * @brief DrawInhabitants
+ * @param nShadow
+ */
+void DrawInhabitants(GLint nShadow){
+    static GLfloat yRot = 0.0f;
+    GLint i;
+
+    if(nShadow == 0)
+        yRot += 0.5f;
+    else
+        glColor3f(0.0f,0.0f,0.0f);
+
+    if(nShadow == 0)
+        glColor3f(0.0f,1.0f,0.0f);
+
+    for(i=0; i<NUM_SPHERES; i++)
+    {
+        glPushMatrix();
+            spheres[i].ApplyActorTransform();
+            glutSolidSphere(0.3f,17,9);
+        glPopMatrix();
+    }
+
+    glPushMatrix();
+        glTranslatef(0.0f,0.1f,-2.5f);
+
+        if(nShadow == 0)
+            glColor3f(0.0f,0.0f,1.0f);
+
+        glPushMatrix();
+            glRotatef(-yRot*2.0f,0.0f,1.0f,0.0f);
+            glTranslatef(1.0f,0.0f,0.0f);
+            glutSolidSphere(0.1f,17,9);
+        glPopMatrix();
+
+        if(nShadow == 0)
         {
-            glVertex3f(iLine,y,fExtent);
-            glVertex3f(iLine,y,-fExtent);
-
-            glVertex3f(fExtent,y,iLine);
-            glVertex3f(-fExtent,y,iLine);
+            glColor3f(1.0f,0.0f,0.0f);
+            glMaterialfv(GL_FRONT,GL_SPECULAR,fBrightLight);
         }
-    glEnd();
+
+        glRotatef(yRot,0.0f,1.0f,0.0f);
+        gltDrawTorus(0.35f,0.15f,61,37);
+        glMaterialfv(GL_FRONT,GL_SPECULAR,fNoLight);
+    glPopMatrix();
 }
 
 void RenderScene(void)
 {
-    int i;
-    static GLfloat yRot = 0.0f;
-    yRot += 0.5f;
-
+    // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glPushMatrix();
         frameCamera.ApplyCameraTransform();
 
+        // Position light before any other transformations
+        glLightfv(GL_LIGHT0,GL_POSITION,fLightPos);
+
+        // Draw the ground
+        glColor3f(0.6f,0.4f,0.1f);
         DrawGround();
 
-        for(i=0; i<NUM_SPHERES; i++)
-        {
-            glPushMatrix();
-                spheres[i].ApplyActorTransform();
-                glutSolidSphere(0.1f,13,26);
-            glPopMatrix();
-        }
-
+        // Draw shadows first
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_LIGHTING);
         glPushMatrix();
-            glTranslatef(0.0f,0.0f,-2.5f);
-
-            glPushMatrix();
-                glRotatef(-yRot*2.0f,0.0f,1.0f,0.0f);
-                glTranslatef(1.0f,0.0f,0.0f);
-                glutSolidSphere(0.1f,13,26);
-            glPopMatrix();
-
-            glRotatef(yRot,0.0f,1.0f,0.0f);
-            gltDrawTorus(0.35f,0.15f,40,20);
+            glMultMatrixf(mShadowMatrix);
+            DrawInhabitants(1);
         glPopMatrix();
+        glEnable(GL_LIGHTING);
+        glEnable(GL_DEPTH_TEST);
+
+        // Draw inhabitants normally
+        DrawInhabitants(0);
 
     glPopMatrix();
 
     glutSwapBuffers();
-
+//    glutPostRedisplay();
 }
 
 /**
@@ -155,7 +241,7 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("OpenGL SphereWorld Demo");
+    glutCreateWindow("OpenGL SphereWorld Demo + Lights and Shadow");
 
     glutReshapeFunc(ChangeSize);
     glutDisplayFunc(RenderScene);
