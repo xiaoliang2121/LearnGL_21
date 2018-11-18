@@ -7,202 +7,256 @@
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
 #include "math3d.h"
+#include "glframe.h"
 #include <cmath>
 #include <cstdlib>
 
-// Array of small stars
-#define SMALL_STARS 100
-M3DVector2f  vSmallStars[SMALL_STARS];
+#define NUM_SPHERES      30
+GLFrame    spheres[NUM_SPHERES];
+GLFrame    frameCamera;
 
-#define MEDIUM_STARS   40
-M3DVector2f vMediumStars[MEDIUM_STARS];
+// Light and material Data
+GLfloat fLightPos[4]   = { -100.0f, 100.0f, 50.0f, 1.0f };  // Point source
+GLfloat fNoLight[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+GLfloat fLowLight[] = { 0.25f, 0.25f, 0.25f, 1.0f };
+GLfloat fBrightLight[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-#define LARGE_STARS 15
-M3DVector2f vLargeStars[LARGE_STARS];
+M3DMatrix44f mShadowMatrix;
 
-#define SCREEN_X    800
-#define SCREEN_Y    600
-
-///////////////////////////////////////////////////////////////////////
-// Reset flags as appropriate in response to menu selections
-void ProcessMenu(int value)
-{
-    switch(value)
-        {
-        case 1:
-            // Turn on antialiasing, and give hint to do the best
-            // job possible.
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glEnable(GL_BLEND);
-            glEnable(GL_POINT_SMOOTH);
-            glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
-            glEnable(GL_LINE_SMOOTH);
-            glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-            glEnable(GL_POLYGON_SMOOTH);
-            glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
-            break;
-
-        case 2:
-            // Turn off blending and all smoothing
-            glDisable(GL_BLEND);
-            glDisable(GL_LINE_SMOOTH);
-            glDisable(GL_POINT_SMOOTH);
-            glDisable(GL_POLYGON_SMOOTH);
-            break;
-
-        default:
-            break;
-        }
-
-    // Trigger a redraw
-    glutPostRedisplay();
-}
-
-
-///////////////////////////////////////////////////
-// Called to draw scene
-void RenderScene(void)
-{
-    int i;                  // Loop variable
-    GLfloat x = 700.0f;     // Location and radius of moon
-    GLfloat y = 500.0f;
-    GLfloat r = 50.0f;
-    GLfloat angle = 0.0f;   // Another looping variable
-
-    // Clear the window
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Everything is white
-    glColor3f(1.0f, 1.0f, 1.0f);
-
-    // Draw small stars
-    glPointSize(1.0f);
-    glBegin(GL_POINTS);
-        for(i = 0; i < SMALL_STARS; i++)
-            glVertex2fv(vSmallStars[i]);
-    glEnd();
-
-    // Draw medium sized stars
-    glPointSize(3.05f);
-    glBegin(GL_POINTS);
-        for(i = 0; i< MEDIUM_STARS; i++)
-            glVertex2fv(vMediumStars[i]);
-    glEnd();
-
-    // Draw largest stars
-    glPointSize(5.5f);
-    glBegin(GL_POINTS);
-        for(i = 0; i < LARGE_STARS; i++)
-            glVertex2fv(vLargeStars[i]);
-    glEnd();
-
-    // Draw the "moon"
-    glBegin(GL_TRIANGLE_FAN);
-        glVertex2f(x, y);
-        for(angle = 0; angle < 2.0f * 3.141592f; angle += 0.1f)
-            glVertex2f(x + (float)cos(angle) * r, y + (float)sin(angle) * r);
-            glVertex2f(x + r, y);
-    glEnd();
-
-    // Draw distant horizon
-    glLineWidth(3.5);
-    glBegin(GL_LINE_STRIP);
-        glVertex2f(0.0f, 25.0f);
-        glVertex2f(50.0f, 100.0f);
-        glVertex2f(100.0f, 25.0f);
-        glVertex2f(225.0f, 125.0f);
-        glVertex2f(300.0f, 50.0f);
-        glVertex2f(375.0f, 100.0f);
-        glVertex2f(460.0f, 25.0f);
-        glVertex2f(525.0f, 100.0f);
-        glVertex2f(600.0f, 20.0f);
-        glVertex2f(675.0f, 70.0f);
-        glVertex2f(750.0f, 25.0f);
-        glVertex2f(800.0f, 90.0f);
-    glEnd();
-
-
-    // Swap buffers
-    glutSwapBuffers();
-}
-
-
+//////////////////////////////////////////////////////////////////
 // This function does any needed initialization on the rendering
 // context.
 void SetupRC()
-{
-    int i;
+    {
+    int iSphere;
 
-    // Populate star list
-    for(i = 0; i < SMALL_STARS; i++)
+    // Calculate shadow matrix
+    M3DVector3f vPoints[3] = {{ 0.0f, -0.4f, 0.0f },
+                             { 10.0f, -0.4f, 0.0f },
+                             { 5.0f, -0.4f, -5.0f }};
+
+    // Grayish background
+    glClearColor(fLowLight[0], fLowLight[1], fLowLight[2], fLowLight[3]);
+
+    // Cull backs of polygons
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+
+    // Setup light parameters
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, fNoLight);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, fLowLight);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, fBrightLight);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, fBrightLight);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+
+
+    // Get the plane equation from three points on the ground
+    M3DVector4f vPlaneEquation;
+    m3dGetPlaneEquation(vPlaneEquation, vPoints[0], vPoints[1], vPoints[2]);
+
+    // Calculate projection matrix to draw shadow on the ground
+    m3dMakePlanarShadowMatrix(mShadowMatrix, vPlaneEquation, fLightPos);
+
+
+    // Mostly use material tracking
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+    glMateriali(GL_FRONT, GL_SHININESS, 128);
+
+    // Randomly place the sphere inhabitants
+    for(iSphere = 0; iSphere < NUM_SPHERES; iSphere++)
         {
-        vSmallStars[i][0] = (GLfloat)(rand() % SCREEN_X);
-        vSmallStars[i][1] = (GLfloat)(rand() % (SCREEN_Y - 100))+100.0f;
+        spheres[iSphere].SetOrigin((float)((rand() % 400) - 200) * 0.1f, 0.0f,
+                        (float)((rand() % 400) - 200) * 0.1f);
         }
 
-    // Populate star list
-    for(i = 0; i < MEDIUM_STARS; i++)
+    glEnable(GL_MULTISAMPLE);  // This is actually on by default
+    }
+
+
+///////////////////////////////////////////////////////////
+// Draw the ground as a series of triangle strips
+void DrawGround(void)
+    {
+    GLfloat fExtent = 20.0f;
+    GLfloat fStep = 1.0f;
+    GLfloat y = -0.4f;
+    GLfloat iStrip, iRun;
+
+    for(iStrip = -fExtent; iStrip <= fExtent; iStrip += fStep)
         {
-        vMediumStars[i][0] = (GLfloat)(rand() % SCREEN_X * 10)/10.0f;
-        vMediumStars[i][1] = (GLfloat)(rand() % (SCREEN_Y - 100))+100.0f;
+        glBegin(GL_TRIANGLE_STRIP);
+            glNormal3f(0.0f, 1.0f, 0.0f);   // All Point up
+
+            for(iRun = fExtent; iRun >= -fExtent; iRun -= fStep)
+                {
+                glVertex3f(iStrip, y, iRun);
+                glVertex3f(iStrip + fStep, y, iRun);
+                }
+        glEnd();
+        }
+    }
+
+///////////////////////////////////////////////////////////////////////
+// Draw random inhabitants and the rotating torus/sphere duo
+void DrawInhabitants(GLint nShadow)
+    {
+    static GLfloat yRot = 0.0f;         // Rotation angle for animation
+    GLint i;
+
+    if(nShadow == 0)
+        yRot += 0.5f;
+    else
+        glColor3f(0.0f, 0.0f, 0.0f);
+
+    // Draw the randomly located spheres
+    if(nShadow == 0)
+        glColor3f(0.0f, 1.0f, 0.0f);
+
+
+    for(i = 0; i < NUM_SPHERES; i++)
+        {
+        glPushMatrix();
+        spheres[i].ApplyActorTransform();
+        glutSolidSphere(0.3f, 17, 9);
+        glPopMatrix();
         }
 
-    // Populate star list
-    for(i = 0; i < LARGE_STARS; i++)
-        {
-        vLargeStars[i][0] = (GLfloat)(rand() % SCREEN_X*10)/10.0f;
-        vLargeStars[i][1] = (GLfloat)(rand() % (SCREEN_Y - 100)*10.0f)/ 10.0f +100.0f;
-        }
+    glPushMatrix();
+        glTranslatef(0.0f, 0.1f, -2.5f);
+
+        if(nShadow == 0)
+            glColor3f(0.0f, 0.0f, 1.0f);
+
+        glPushMatrix();
+            glRotatef(-yRot * 2.0f, 0.0f, 1.0f, 0.0f);
+            glTranslatef(1.0f, 0.0f, 0.0f);
+            glutSolidSphere(0.1f, 17, 9);
+        glPopMatrix();
+
+        if(nShadow == 0)
+            {
+            // Torus alone will be specular
+            glColor3f(1.0f, 0.0f, 0.0f);
+            glMaterialfv(GL_FRONT, GL_SPECULAR, fBrightLight);
+            }
+
+        glRotatef(yRot, 0.0f, 1.0f, 0.0f);
+        gltDrawTorus(0.35, 0.15, 61, 37);
+        glMaterialfv(GL_FRONT, GL_SPECULAR, fNoLight);
+    glPopMatrix();
+    }
 
 
-    // Black background
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
+// Called to draw scene
+void RenderScene(void)
+    {
+    // Clear the window with current clearing color
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Set drawing color to white
-    glColor3f(0.0f, 0.0f, 0.0f);
-}
+    glPushMatrix();
+        frameCamera.ApplyCameraTransform();
+
+        // Position light before any other transformations
+        glLightfv(GL_LIGHT0, GL_POSITION, fLightPos);
+
+        // Draw the ground
+        glColor3f(0.60f, .40f, .10f);
+        DrawGround();
+
+        // Draw shadows first
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_LIGHTING);
+        glPushMatrix();
+            glMultMatrixf(mShadowMatrix);
+            DrawInhabitants(1);
+        glPopMatrix();
+        glEnable(GL_LIGHTING);
+        glEnable(GL_DEPTH_TEST);
+
+        // Draw inhabitants normally
+        DrawInhabitants(0);
+
+    glPopMatrix();
+
+    // Do the buffer Swap
+    glutSwapBuffers();
+    glutPostRedisplay();
+    }
 
 
+
+// Respond to arrow keys by moving the camera frame of reference
+void SpecialKeys(int key, int x, int y)
+    {
+    if(key == GLUT_KEY_UP)
+        frameCamera.MoveForward(0.1f);
+
+    if(key == GLUT_KEY_DOWN)
+        frameCamera.MoveForward(-0.1f);
+
+    if(key == GLUT_KEY_LEFT)
+        frameCamera.RotateLocalY(0.1);
+
+    if(key == GLUT_KEY_RIGHT)
+        frameCamera.RotateLocalY(-0.1);
+
+    // Refresh the Window
+    glutPostRedisplay();
+    }
+
+
+///////////////////////////////////////////////////////////
+// Called by GLUT library when idle (window not being
+// resized or moved)
+void TimerFunction(int value)
+    {
+    // Redraw the scene with new coordinates
+    glutPostRedisplay();
+    glutTimerFunc(33,TimerFunction, 1);
+    }
 
 void ChangeSize(int w, int h)
-{
-    // Prevent a divide by zero
+    {
+    GLfloat fAspect;
+
+    // Prevent a divide by zero, when window is too short
+    // (you cant make a window of zero width).
     if(h == 0)
         h = 1;
 
-    // Set Viewport to window dimensions
     glViewport(0, 0, w, h);
 
-    // Reset projection matrix stack
+    fAspect = (GLfloat)w / (GLfloat)h;
+
+    // Reset the coordinate system before modifying
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    // Establish clipping volume (left, right, bottom, top, near, far)
-    gluOrtho2D(0.0, SCREEN_X, 0.0, SCREEN_Y);
+    // Set the clipping volume
+    gluPerspective(35.0f, fAspect, 1.0f, 50.0f);
 
-
-    // Reset Model view matrix stack
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-}
+    }
 
 ///////////////////////////////////////////////////////////
 // Main program entry point
 int main(int argc, char* argv[])
 {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
     glutInitWindowSize(800, 600);
-    glutCreateWindow("Smoothing Out The Jaggies");
+    glutCreateWindow("OpenGL SphereWorld Demo Multisamples");
 
-    // Create the Menu
-    glutCreateMenu(ProcessMenu);
-    glutAddMenuEntry("Antialiased Rendering",1);
-    glutAddMenuEntry("Normal Rendering",2);
-    glutAttachMenu(GLUT_RIGHT_BUTTON);
-
+    glutSpecialFunc(SpecialKeys);
     glutDisplayFunc(RenderScene);
     glutReshapeFunc(ChangeSize);
+
+    glutTimerFunc(33, TimerFunction, 1);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
