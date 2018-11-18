@@ -34,9 +34,9 @@ void DrawJet(int nShadow)
     // Set material color, note we only have to set to black
     // for the shadow once
     if(nShadow == 0)
-           glColor3ub(128, 128, 128);
+        glColor3ub(128, 128, 128);
     else
-            glColor3ub(0,0,0);
+        glColor3ub(0,0,0);
 
 
     // Nose Cone - Points straight down
