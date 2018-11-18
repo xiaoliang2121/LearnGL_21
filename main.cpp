@@ -38,6 +38,13 @@ void SetupRC()
     // Grayish background
     glClearColor(fLowLight[0], fLowLight[1], fLowLight[2], fLowLight[3]);
 
+    // 设置雾参数
+    glEnable(GL_FOG);
+    glFogfv(GL_FOG_COLOR,fLowLight);
+    glFogf(GL_FOG_START,5.0f);
+    glFogf(GL_FOG_END,30.0f);
+    glFogi(GL_FOG_MODE,GL_LINEAR);
+
     // Cull backs of polygons
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
