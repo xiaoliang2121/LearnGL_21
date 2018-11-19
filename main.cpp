@@ -6,6 +6,8 @@
 
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
+#include <cmath>
+#include <cstdlib>
 
 // 用于保存源图像数据的模块全局变量
 static GLubyte *pImage = NULL;
@@ -14,6 +16,7 @@ static GLenum eFormat;
 
 // 目标绘图模式
 static GLint iRenderMode = 1;
+static GLboolean    bHistogram = GL_FALSE;
 
 
 //////////////////////////////////////////////////////////////////
@@ -40,6 +43,15 @@ void ShutdownRC(void)
 // Reset flags as appropriate in response to menu selections
 void ProcessMenu(int value)
     {
+    // For historgram, do not change render mode, just set
+    // histogram flag to true
+    if(value == 6)  // Histogram
+    {
+        bHistogram = GL_TRUE;
+        glutPostRedisplay();
+        return;
+    }
+
     if(value == 0)
          // Save image
         gltWriteTGA("ScreenShot.tga");
@@ -56,79 +68,84 @@ void ProcessMenu(int value)
 ///////////////////////////////////////////////////////////////////////
 // Called to draw scene
 void RenderScene(void)
-    {
-    GLint iViewport[4];
-    GLbyte *pModifiedBytes = NULL;
-    GLfloat invertMap[256];
-    GLint i;
+{
+    GLint i;                    // Looping variable
+    GLint iViewport[4];         // Viewport
+    GLint iLargest;				// Largest histogram value
+
+    static GLubyte invertTable[256][3];// Inverted color table
+
+    // Do a black and white scaling
+    static GLfloat lumMat[16] = { 0.30f, 0.30f, 0.30f, 0.0f,
+                                  0.59f, 0.59f, 0.59f, 0.0f,
+                                  0.11f, 0.11f, 0.11f, 0.0f,
+                                  0.0f,  0.0f,  0.0f,  1.0f };
+
+    static GLfloat mSharpen[3][3] = {  // Sharpen convolution kernel
+         {0.0f, -1.0f, 0.0f},
+         {-1.0f, 5.0f, -1.0f },
+         {0.0f, -1.0f, 0.0f }};
+
+    static GLfloat mEmboss[3][3] = {   // Emboss convolution kernel
+        { 2.0f, 0.0f, 0.0f },
+        { 0.0f, -1.0f, 0.0f },
+        { 0.0f, 0.0f, -1.0f }};
+
+    static GLint histoGram[256];    // Storeage for histogram statistics
 
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT);
 
     // Current Raster Position always at bottom left hand corner of window
     glRasterPos2i(0, 0);
+    glGetIntegerv(GL_VIEWPORT, iViewport);
+    glPixelZoom((GLfloat) iViewport[2] / (GLfloat)iWidth, (GLfloat) iViewport[3] / (GLfloat)iHeight);
+
+    if(bHistogram == GL_TRUE)   // Collect Historgram data
+        {
+        // We are collecting luminance data, use our conversion formula
+        // instead of OpenGL's (which just adds color components together)
+        glMatrixMode(GL_COLOR);
+        glLoadMatrixf(lumMat);
+        glMatrixMode(GL_MODELVIEW);
+
+        // Start collecting histogram data, 256 luminance values
+        glHistogram(GL_HISTOGRAM, 256, GL_LUMINANCE, GL_FALSE);
+        glEnable(GL_HISTOGRAM);
+        }
 
     // Do image operation, depending on rendermode index
     switch(iRenderMode)
         {
-        case 2:     // Flip the pixels
-            glPixelZoom(-1.0f, -1.0f);
-            glRasterPos2i(iWidth, iHeight);
+        case 5:     // Sharpen image
+            glConvolutionFilter2D(GL_CONVOLUTION_2D, GL_RGB, 3, 3, GL_LUMINANCE, GL_FLOAT, mSharpen);
+            glEnable(GL_CONVOLUTION_2D);
             break;
 
-        case 3:     // Zoom pixels to fill window
-            glGetIntegerv(GL_VIEWPORT, iViewport);
-            glPixelZoom((GLfloat) iViewport[2] / (GLfloat)iWidth, (GLfloat) iViewport[3] / (GLfloat)iHeight);
+        case 4:     // Emboss image
+            glConvolutionFilter2D(GL_CONVOLUTION_2D, GL_RGB, 3, 3, GL_LUMINANCE, GL_FLOAT, mEmboss);
+            glEnable(GL_CONVOLUTION_2D);
+            glMatrixMode(GL_COLOR);
+            glLoadMatrixf(lumMat);
+            glMatrixMode(GL_MODELVIEW);
             break;
 
-        case 4:     // Just Red
-            glPixelTransferf(GL_RED_SCALE, 1.0f);
-            glPixelTransferf(GL_GREEN_SCALE, 0.0f);
-            glPixelTransferf(GL_BLUE_SCALE, 0.0f);
+        case 3:     // Invert Image
+            for(i = 0; i < 255; i++)
+                {
+                invertTable[i][0] = (GLubyte)(255 - i);
+                invertTable[i][1] = (GLubyte)(255 - i);
+                invertTable[i][2] = (GLubyte)(255 - i);
+                }
+
+            glColorTable(GL_COLOR_TABLE, GL_RGB, 256, GL_RGB, GL_UNSIGNED_BYTE, invertTable);
+            glEnable(GL_COLOR_TABLE);
             break;
 
-        case 5:     // Just Green
-            glPixelTransferf(GL_RED_SCALE, 0.0f);
-            glPixelTransferf(GL_GREEN_SCALE, 1.0f);
-            glPixelTransferf(GL_BLUE_SCALE, 0.0f);
-            break;
-
-        case 6:     // Just Blue
-            glPixelTransferf(GL_RED_SCALE, 0.0f);
-            glPixelTransferf(GL_GREEN_SCALE, 0.0f);
-            glPixelTransferf(GL_BLUE_SCALE, 1.0f);
-            break;
-
-        case 7:     // Black & White, more tricky
-            // First draw image into color buffer
-            glDrawPixels(iWidth, iHeight, eFormat, GL_UNSIGNED_BYTE, pImage);
-
-            // Allocate space for the luminance map
-            pModifiedBytes = (GLbyte *)malloc(iWidth * iHeight);
-
-            // Scale colors according to NSTC standard
-            glPixelTransferf(GL_RED_SCALE, 0.3f);
-            glPixelTransferf(GL_GREEN_SCALE, 0.59f);
-            glPixelTransferf(GL_BLUE_SCALE, 0.11f);
-
-            // Read pixles into buffer (scale above will be applied)
-            glReadPixels(0,0,iWidth, iHeight, GL_LUMINANCE, GL_UNSIGNED_BYTE, pModifiedBytes);
-
-            // Return color scaling to normal
-            glPixelTransferf(GL_RED_SCALE, 1.0f);
-            glPixelTransferf(GL_GREEN_SCALE, 1.0f);
-            glPixelTransferf(GL_BLUE_SCALE, 1.0f);
-            break;
-
-        case 8:     // Invert colors
-            invertMap[0] = 1.0f;
-            for(i = 1; i < 256; i++)
-                invertMap[i] = 1.0f - (1.0f / 255.0f * (GLfloat)i);
-
-            glPixelMapfv(GL_PIXEL_MAP_R_TO_R, 255, invertMap);
-            glPixelMapfv(GL_PIXEL_MAP_G_TO_G, 255, invertMap);
-            glPixelMapfv(GL_PIXEL_MAP_B_TO_B, 255, invertMap);
-            glPixelTransferi(GL_MAP_COLOR, GL_TRUE);
+        case 2:     // Brighten Image
+            glMatrixMode(GL_COLOR);
+            glScalef(1.25f, 1.25f, 1.25f);
+            glMatrixMode(GL_MODELVIEW);
             break;
 
         case 1:     // Just do a plain old image copy
@@ -138,25 +155,42 @@ void RenderScene(void)
         }
 
     // Do the pixel draw
-    if(pModifiedBytes == NULL)
-        glDrawPixels(iWidth, iHeight, eFormat, GL_UNSIGNED_BYTE, pImage);
-    else
+    glDrawPixels(iWidth, iHeight, eFormat, GL_UNSIGNED_BYTE, pImage);
+
+    // Fetch and draw histogram?
+    if(bHistogram == GL_TRUE)
         {
-        glDrawPixels(iWidth, iHeight, GL_LUMINANCE, GL_UNSIGNED_BYTE, pModifiedBytes);
-        free(pModifiedBytes);
+        // Read histogram data into buffer
+        glGetHistogram(GL_HISTOGRAM, GL_TRUE, GL_LUMINANCE, GL_INT, histoGram);
+
+        // Find largest value for scaling graph down
+        iLargest = 0;
+        for(i = 0; i < 255; i++)
+            if(iLargest < histoGram[i])
+                iLargest = histoGram[i];
+
+        // White lines
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glBegin(GL_LINE_STRIP);
+            for(i = 0; i < 255; i++)
+                glVertex2f((GLfloat)i, (GLfloat)histoGram[i] / (GLfloat) iLargest * 128.0f);
+        glEnd();
+
+        bHistogram = GL_FALSE;
+        glDisable(GL_HISTOGRAM);
         }
 
 
     // Reset everyting to default
-    glPixelTransferi(GL_MAP_COLOR, GL_FALSE);
-    glPixelTransferf(GL_RED_SCALE, 1.0f);
-    glPixelTransferf(GL_GREEN_SCALE, 1.0f);
-    glPixelTransferf(GL_BLUE_SCALE, 1.0f);
-    glPixelZoom(1.0f, 1.0f);                    // No Pixel Zooming
+    glMatrixMode(GL_COLOR);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glDisable(GL_CONVOLUTION_2D);
+    glDisable(GL_COLOR_TABLE);
 
-    // Do the buffer Swap
+    // Show our hard work...
     glutSwapBuffers();
-    }
+}
 
 
 
@@ -186,8 +220,16 @@ int main(int argc, char* argv[])
     {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-    glutInitWindowSize(800, 600);
-    glutCreateWindow("OpenGL Image Operations");
+    glutInitWindowSize(600, 600);
+    glutCreateWindow("OpenGL Imaging subset");
+
+    // Check for imaging subset, must be done after window
+    // is create or there won't be an OpenGL context to query
+    if(gltIsExtSupported("GL_ARB_imaging") == 0)
+    {
+        printf("Imaging subset not supported\r\n");
+            return 0;
+    }
 
     glutDisplayFunc(RenderScene);
     glutReshapeFunc(ChangeSize);
@@ -195,14 +237,12 @@ int main(int argc, char* argv[])
     // 创建菜单
     glutCreateMenu(ProcessMenu);
     glutAddMenuEntry("Save Image",0);
-    glutAddMenuEntry("Draw Pixels",1);
-    glutAddMenuEntry("Flip Pixels",2);
-    glutAddMenuEntry("Zoom Pixels",3);
-    glutAddMenuEntry("Just Red Channel",4);
-    glutAddMenuEntry("Just Green Channel",5);
-    glutAddMenuEntry("Just Blue Channel",6);
-    glutAddMenuEntry("Black and White", 7);
-    glutAddMenuEntry("Invert Colors", 8);
+    glutAddMenuEntry("Raw Stretched Image",1);
+    glutAddMenuEntry("Increase Contrast",2);
+    glutAddMenuEntry("Invert Color", 3);
+    glutAddMenuEntry("Emboss Image", 4);
+    glutAddMenuEntry("Sharpen Image", 5);
+    glutAddMenuEntry("Histogram", 6);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 
 
