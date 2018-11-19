@@ -45,20 +45,24 @@ GLubyte fire[128] = { 0x00, 0x00, 0x00, 0x00,
 // Called to draw scene
 void RenderScene(void)
 {
-    int x,y;
+    GLubyte *pImage = NULL;
+    GLint iWidth,iHeight,iComponents;
+    GLenum eFormat;
 
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // Set color to white
-    glColor3f(1.0f, 1.0f, 1.0f);
+    glPixelStorei(GL_UNPACK_ALIGNMENT,1);
 
-    for(y=0; y<16; y++)
-    {
-        glRasterPos2i(0,y*32);
-        for(x=0; x<16; x++)
-            glBitmap(32,32,0.0f,0.0f,32.0f,0.0f,fire);
-    }
+    pImage = (GLubyte *)gltLoadTGA("../LearnGL_21/Res/fire.tga",&iWidth,&iHeight,&iComponents,
+                        &eFormat);
+
+    glRasterPos2i(0,0);
+
+    if(pImage != NULL)
+        glDrawPixels(iWidth,iHeight,eFormat,GL_UNSIGNED_BYTE,pImage);
+
+    free(pImage);
 
 
     // Flush drawing commands
