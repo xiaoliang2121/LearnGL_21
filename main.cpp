@@ -7,12 +7,76 @@
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
 #include "math3d.h"
-#include <cstdlib>
+#include <cmath>
 
-// Rotation amounts
-static GLfloat xRot = 0.0f;
-static GLfloat yRot = 0.0f;
+M3DVector3f vLightDir = {-1.0f,1.0f,1.0f};
 
+// Draw a torus (doughnut), using the current 1D texture for light shading
+void toonDrawTorus(GLfloat majorRadius, GLfloat minorRadius,
+                   int numMajor, int  numMinor, M3DVector3f vLightDir)
+{
+    M3DMatrix44f mModelViewMatrix;
+    M3DMatrix44f mInvertedLight;
+    M3DVector3f vNewLight;
+    M3DVector3f vNormal;
+    double majorStep = 2.0f*M3D_PI / numMajor;
+    double minorStep = 2.0f*M3D_PI / numMinor;
+    int i, j;
+
+    // Get the modelview matrix
+    glGetFloatv(GL_MODELVIEW_MATRIX, mModelViewMatrix);
+
+    // Instead of transforming every normal and then dotting it with
+    // the light vector, we will transform the light into object
+    // space by multiplying it by the inverse of the modelview matrix
+    m3dInvertMatrix44(mInvertedLight, mModelViewMatrix);
+    m3dTransformVector3(vNewLight, vLightDir, mInvertedLight);
+    vNewLight[0] -= mInvertedLight[12];
+    vNewLight[1] -= mInvertedLight[13];
+    vNewLight[2] -= mInvertedLight[14];
+    m3dNormalizeVector(vNewLight);
+
+    // Draw torus as a series of triangle strips
+    for (i=0; i<numMajor; ++i)
+    {
+        double a0 = i * majorStep;
+        double a1 = a0 + majorStep;
+        GLfloat x0 = (GLfloat) cos(a0);
+        GLfloat y0 = (GLfloat) sin(a0);
+        GLfloat x1 = (GLfloat) cos(a1);
+        GLfloat y1 = (GLfloat) sin(a1);
+
+        glBegin(GL_TRIANGLE_STRIP);
+        for (j=0; j<=numMinor; ++j)
+        {
+            double b = j * minorStep;
+            GLfloat c = (GLfloat) cos(b);
+            GLfloat r = minorRadius * c + majorRadius;
+            GLfloat z = minorRadius * (GLfloat) sin(b);
+
+            // First point
+            vNormal[0] = x0*c;
+            vNormal[1] = y0*c;
+            vNormal[2] = z/minorRadius;
+            m3dNormalizeVector(vNormal);
+
+            // Texture coordinate is set by intensity of light
+            glTexCoord1f(m3dDotProduct(vNewLight, vNormal));
+            glVertex3f(x0*r, y0*r, z);
+
+            // Second point
+            vNormal[0] = x1*c;
+            vNormal[1] = y1*c;
+            vNormal[2] = z/minorRadius;
+            m3dNormalizeVector(vNormal);
+
+            // Texture coordinate is set by intensity of light
+            glTexCoord1f(m3dDotProduct(vNewLight, vNormal));
+            glVertex3f(x1*r, y1*r, z);
+        }
+        glEnd();
+    }
+}
 
 // Change viewing volume and viewport.  Called when window is resized
 void ChangeSize(int w, int h)
@@ -33,7 +97,7 @@ void ChangeSize(int w, int h)
     glLoadIdentity();
 
     // Produce the perspective projection
-    gluPerspective(35.0f, fAspect, 1.0, 40.0);
+    gluPerspective(35.0f, fAspect, 1.0f, 50.0f);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -45,169 +109,72 @@ void ChangeSize(int w, int h)
 // the scene.
 void SetupRC()
 {
-    GLbyte *pBytes;
-    GLint iWidth, iHeight, iComponents;
-    GLenum eFormat;
+    GLbyte toonTable[4][3] = { { 0, 32, 0 },
+                               { 0, 64, 0 },
+                               { 0, 128, 0 },
+                               { 0, 192, 0 }};
 
-    // Light values and coordinates
-    GLfloat  whiteLight[] = { 0.05f, 0.05f, 0.05f, 1.0f };
-    GLfloat  sourceLight[] = { 0.25f, 0.25f, 0.25f, 1.0f };
-    GLfloat	 lightPos[] = { -10.f, 5.0f, 5.0f, 1.0f };
+    glClearColor(0.0f,0.0f,0.5f,1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
-    glEnable(GL_DEPTH_TEST);	// Hidden surface removal
-    glFrontFace(GL_CCW);		// Counter clock-wise polygons face out
-    glEnable(GL_CULL_FACE);		// Do not calculate inside of jet
+    glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_DECAL);
+    glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_WRAP_S,GL_CLAMP);
 
-    // Enable lighting
-    glEnable(GL_LIGHTING);
+    glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+    glTexImage1D(GL_TEXTURE_1D,0,GL_RGB,4,0,GL_RGB,GL_UNSIGNED_BYTE,toonTable);
 
-    // Setup and enable light 0
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT,whiteLight);
-    glLightfv(GL_LIGHT0,GL_AMBIENT,sourceLight);
-    glLightfv(GL_LIGHT0,GL_DIFFUSE,sourceLight);
-    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
-    glEnable(GL_LIGHT0);
+    glEnable(GL_TEXTURE_1D);
 
-    // Enable color tracking
-    glEnable(GL_COLOR_MATERIAL);
-
-    // Set Material properties to follow glColor values
-    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
-
-    // Black blue background
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
-
-    // Load texture
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    pBytes = gltLoadTGA("../LearnGL_21/Res/stone.tga", &iWidth, &iHeight, &iComponents, &eFormat);
-    glTexImage2D(GL_TEXTURE_2D, 0, iComponents, iWidth, iHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBytes);
-    free(pBytes);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glEnable(GL_TEXTURE_2D);
 }
 
 // Respond to arrow keys
-void SpecialKeys(int key, int x, int y)
-{
-    if(key == GLUT_KEY_UP)
-        xRot-= 5.0f;
+//void SpecialKeys(int key, int x, int y)
+//{
+//    if(key == GLUT_KEY_UP)
+//        xRot-= 5.0f;
 
-    if(key == GLUT_KEY_DOWN)
-        xRot += 5.0f;
+//    if(key == GLUT_KEY_DOWN)
+//        xRot += 5.0f;
 
-    if(key == GLUT_KEY_LEFT)
-        yRot -= 5.0f;
+//    if(key == GLUT_KEY_LEFT)
+//        yRot -= 5.0f;
 
-    if(key == GLUT_KEY_RIGHT)
-        yRot += 5.0f;
+//    if(key == GLUT_KEY_RIGHT)
+//        yRot += 5.0f;
 
-        xRot = (GLfloat)((const int)xRot % 360);
-        yRot = (GLfloat)((const int)yRot % 360);
+//        xRot = (GLfloat)((const int)xRot % 360);
+//        yRot = (GLfloat)((const int)yRot % 360);
 
-    // Refresh the Window
-    glutPostRedisplay();
-}
+//    // Refresh the Window
+//    glutPostRedisplay();
+//}
 
 
 // Called to draw scene
 void RenderScene(void)
 {
-    M3DVector3f vNormal;
-    M3DVector3f vCorners[5] = { { 0.0f, .80f, 0.0f },     // Top           0
-                              { -0.5f, 0.0f, -.50f },    // Back left     1
-                              { 0.5f, 0.0f, -0.50f },    // Back right    2
-                              { 0.5f, 0.0f, 0.5f },      // Front right   3
-                              { -0.5f, 0.0f, 0.5f }};    // Front left    4
+    static GLfloat yRot = 0.0f;
 
-    // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Save the matrix state and do the rotations
     glPushMatrix();
-        // Move object back and do in place rotation
-        glTranslatef(0.0f, -0.25f, -4.0f);
-        glRotatef(xRot, 1.0f, 0.0f, 0.0f);
-        glRotatef(yRot, 0.0f, 1.0f, 0.0f);
-
-        // Draw the Pyramid
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glBegin(GL_TRIANGLES);
-            // Bottom section - two triangles
-            glNormal3f(0.0f, -1.0f, 0.0f);
-            glTexCoord2f(1.0f, 1.0f);
-            glVertex3fv(vCorners[2]);
-
-            glTexCoord2f(0.0f, 0.0f);
-            glVertex3fv(vCorners[4]);
-
-            glTexCoord2f(0.0f, 1.0f);
-            glVertex3fv(vCorners[1]);
-
-
-            glTexCoord2f(1.0f, 1.0f);
-            glVertex3fv(vCorners[2]);
-
-            glTexCoord2f(1.0f, 0.0f);
-            glVertex3fv(vCorners[3]);
-
-            glTexCoord2f(0.0f, 0.0f);
-            glVertex3fv(vCorners[4]);
-
-            // Front Face
-            m3dFindNormal(vNormal, vCorners[0], vCorners[4], vCorners[3]);
-            glNormal3fv(vNormal);
-            glTexCoord2f(0.5f, 1.0f);
-            glVertex3fv(vCorners[0]);
-            glTexCoord2f(0.0f, 0.0f);
-            glVertex3fv(vCorners[4]);
-            glTexCoord2f(1.0f, 0.0f);
-            glVertex3fv(vCorners[3]);
-
-            // Left Face
-            m3dFindNormal(vNormal, vCorners[0], vCorners[1], vCorners[4]);
-            glNormal3fv(vNormal);
-            glTexCoord2f(0.5f, 1.0f);
-            glVertex3fv(vCorners[0]);
-            glTexCoord2f(0.0f, 0.0f);
-            glVertex3fv(vCorners[1]);
-            glTexCoord2f(1.0f, 0.0f);
-            glVertex3fv(vCorners[4]);
-
-            // Back Face
-            m3dFindNormal(vNormal, vCorners[0], vCorners[2], vCorners[1]);
-            glNormal3fv(vNormal);
-            glTexCoord2f(0.5f, 1.0f);
-            glVertex3fv(vCorners[0]);
-
-            glTexCoord2f(0.0f, 0.0f);
-            glVertex3fv(vCorners[2]);
-
-            glTexCoord2f(1.0f, 0.0f);
-            glVertex3fv(vCorners[1]);
-
-            // Right Face
-            m3dFindNormal(vNormal, vCorners[0], vCorners[3], vCorners[2]);
-            glNormal3fv(vNormal);
-            glTexCoord2f(0.5f, 1.0f);
-            glVertex3fv(vCorners[0]);
-            glTexCoord2f(0.0f, 0.0f);
-            glVertex3fv(vCorners[3]);
-            glTexCoord2f(1.0f, 0.0f);
-            glVertex3fv(vCorners[2]);
-        glEnd();
-
-
-    // Restore the matrix state
+        glTranslatef(0.0f,0.0f,-2.5f);
+        glRotatef(yRot,0.0f,1.0f,0.0f);
+        toonDrawTorus(0.35f, 0.15f, 50, 25, vLightDir);
     glPopMatrix();
 
     // Buffer swap
     glutSwapBuffers();
+
+    yRot += 0.5f;
+}
+
+void TimerFunction(int value){
+    // Redraw the scene with new coordinates
+    glutPostRedisplay();
+    glutTimerFunc(33,TimerFunction,1);
 }
 
 ///////////////////////////////////////////////////////////
@@ -217,11 +184,12 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("Textured Pyramid");
+    glutCreateWindow("Toon/Cell Shading Demo");
 
     glutReshapeFunc(ChangeSize);
-    glutSpecialFunc(SpecialKeys);
+//    glutSpecialFunc(SpecialKeys);
     glutDisplayFunc(RenderScene);
+    glutTimerFunc(33,TimerFunction,1);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
