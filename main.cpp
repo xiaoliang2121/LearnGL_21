@@ -7,62 +7,111 @@
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
 
-// Bitmap of camp fire
-GLubyte fire[128] = { 0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0xc0,
-                   0x00, 0x00, 0x01, 0xf0,
-                   0x00, 0x00, 0x07, 0xf0,
-                   0x0f, 0x00, 0x1f, 0xe0,
-                   0x1f, 0x80, 0x1f, 0xc0,
-                   0x0f, 0xc0, 0x3f, 0x80,
-                   0x07, 0xe0, 0x7e, 0x00,
-                   0x03, 0xf0, 0xff, 0x80,
-                   0x03, 0xf5, 0xff, 0xe0,
-                   0x07, 0xfd, 0xff, 0xf8,
-                   0x1f, 0xfc, 0xff, 0xe8,
-                   0xff, 0xe3, 0xbf, 0x70,
-                   0xde, 0x80, 0xb7, 0x00,
-                   0x71, 0x10, 0x4a, 0x80,
-                   0x03, 0x10, 0x4e, 0x40,
-                   0x02, 0x88, 0x8c, 0x20,
-                   0x05, 0x05, 0x04, 0x40,
-                   0x02, 0x82, 0x14, 0x40,
-                   0x02, 0x40, 0x10, 0x80,
-                   0x02, 0x64, 0x1a, 0x80,
-                   0x00, 0x92, 0x29, 0x00,
-                   0x00, 0xb0, 0x48, 0x00,
-                   0x00, 0xc8, 0x90, 0x00,
-                   0x00, 0x85, 0x10, 0x00,
-                   0x00, 0x03, 0x00, 0x00,
-                   0x00, 0x00, 0x10, 0x00 };
+// 用于保存源图像数据的模块全局变量
+static GLubyte *pImage = NULL;
+static GLint iWidth,iHeight,iComponents;
+static GLenum eFormat;
+
+// 目标绘图模式
+static GLint iRenderMode = 1;
+
 
 ///////////////////////////////////////////////////////////
 // Called to draw scene
 void RenderScene(void)
 {
-    GLubyte *pImage = NULL;
-    GLint iWidth,iHeight,iComponents;
-    GLenum eFormat;
+    GLint iViewport[4];
+    GLbyte *pModifiedBytes = NULL;
+    GLfloat invertMap[256];
+    GLint i;
 
-    // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT);
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-
-    pImage = (GLubyte *)gltLoadTGA("../LearnGL_21/Res/fire.tga",&iWidth,&iHeight,&iComponents,
-                        &eFormat);
 
     glRasterPos2i(0,0);
 
-    if(pImage != NULL)
-        glDrawPixels(iWidth,iHeight,eFormat,GL_UNSIGNED_BYTE,pImage);
+    // operations
+    switch(iRenderMode)
+    {
+    case 2:     // Flip the pixels
+        glPixelZoom(-1.0f, -1.0f);
+        glRasterPos2i(iWidth, iHeight);
+        break;
 
-    free(pImage);
+    case 3:     // Zoom pixels to fill window
+        glGetIntegerv(GL_VIEWPORT, iViewport);
+        glPixelZoom((GLfloat) iViewport[2] / (GLfloat)iWidth, (GLfloat) iViewport[3] / (GLfloat)iHeight);
+        break;
+
+    case 4:     // Just Red
+        glPixelTransferf(GL_RED_SCALE, 1.0f);
+        glPixelTransferf(GL_GREEN_SCALE, 0.0f);
+        glPixelTransferf(GL_BLUE_SCALE, 0.0f);
+        break;
+
+    case 5:     // Just Green
+        glPixelTransferf(GL_RED_SCALE, 0.0f);
+        glPixelTransferf(GL_GREEN_SCALE, 1.0f);
+        glPixelTransferf(GL_BLUE_SCALE, 0.0f);
+        break;
+
+    case 6:     // Just Blue
+        glPixelTransferf(GL_RED_SCALE, 0.0f);
+        glPixelTransferf(GL_GREEN_SCALE, 0.0f);
+        glPixelTransferf(GL_BLUE_SCALE, 1.0f);
+        break;
+
+    case 7:     // Black & White, more tricky
+        // First draw image into color buffer
+        glDrawPixels(iWidth, iHeight, eFormat, GL_UNSIGNED_BYTE, pImage);
+
+        // Allocate space for the luminance map
+        pModifiedBytes = (GLbyte *)malloc(iWidth * iHeight);
+
+        // Scale colors according to NSTC standard
+        glPixelTransferf(GL_RED_SCALE, 0.3f);
+        glPixelTransferf(GL_GREEN_SCALE, 0.59f);
+        glPixelTransferf(GL_BLUE_SCALE, 0.11f);
+
+        // Read pixles into buffer (scale above will be applied)
+        glReadPixels(0,0,iWidth, iHeight, GL_LUMINANCE, GL_UNSIGNED_BYTE, pModifiedBytes);
+
+        // Return color scaling to normal
+        glPixelTransferf(GL_RED_SCALE, 1.0f);
+        glPixelTransferf(GL_GREEN_SCALE, 1.0f);
+        glPixelTransferf(GL_BLUE_SCALE, 1.0f);
+        break;
+
+    case 8:     // Invert colors
+        invertMap[0] = 1.0f;
+        for(i = 1; i < 256; i++)
+            invertMap[i] = 1.0f - (1.0f / 255.0f * (GLfloat)i);
+
+        glPixelMapfv(GL_PIXEL_MAP_R_TO_R, 255, invertMap);
+        glPixelMapfv(GL_PIXEL_MAP_G_TO_G, 255, invertMap);
+        glPixelMapfv(GL_PIXEL_MAP_B_TO_B, 255, invertMap);
+        glPixelTransferi(GL_MAP_COLOR, GL_TRUE);
+        break;
+
+    case 1:     // Just do a plain old image copy
+    default:
+                // This line intentially left blank
+        break;
+    }
+
+    if(pModifiedBytes = NULL)
+        glDrawPixels(iWidth,iHeight,eFormat,GL_UNSIGNED_BYTE,pImage);
+    else
+    {
+        glDrawPixels(iWidth,iHeight,GL_LUMINANCE,GL_UNSIGNED_BYTE,pModifiedBytes);
+        free(pModifiedBytes);
+    }
+
+    // Reset everyting to default
+    glPixelTransferi(GL_MAP_COLOR, GL_FALSE);
+    glPixelTransferf(GL_RED_SCALE, 1.0f);
+    glPixelTransferf(GL_GREEN_SCALE, 1.0f);
+    glPixelTransferf(GL_BLUE_SCALE, 1.0f);
+    glPixelZoom(1.0f, 1.0f);                    // No Pixel Zooming
 
 
     // Flush drawing commands
@@ -84,7 +133,7 @@ void ChangeSize(int w, int h)
     glLoadIdentity();
 
     // Psuedo window coordinates
-    gluOrtho2D(0.0, (GLfloat) w, 0.0f, (GLfloat) h);
+    gluOrtho2D(0.0f, (GLfloat) w, 0.0f, (GLfloat) h);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -95,6 +144,29 @@ void ChangeSize(int w, int h)
 void SetupRC(void)
 {
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // Load horse image
+    glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+    pImage = (GLubyte *)gltLoadTGA("../LearnGL_21/Res/fire.tga",&iWidth,&iHeight,&iComponents,
+                        &eFormat);
+    if(pImage == NULL)
+        printf("加载图片失败！");
+}
+
+void ShutdownRC(void){
+    free(pImage);
+}
+
+void ProcessMenu(int value){
+    if(value == 0)
+         // Save image
+        gltWriteTGA("ScreenShot.tga");
+    else
+        // Change render mode index to match menu entry index
+        iRenderMode = value;
+
+    // Trigger Redraw
+    glutPostRedisplay();
 }
 
 ///////////////////////////////////////////////////////////
@@ -103,11 +175,25 @@ int main(int argc, char* argv[])
     {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-    glutInitWindowSize(512, 512);
-    glutCreateWindow("OpenGL Bitmaps");
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("OpenGL Image Operations");
 
     glutDisplayFunc(RenderScene);
     glutReshapeFunc(ChangeSize);
+
+    // 创建菜单
+    glutCreateMenu(ProcessMenu);
+    glutAddMenuEntry("Save Image",0);
+    glutAddMenuEntry("Draw Pixels",1);
+    glutAddMenuEntry("Flip Pixels",2);
+    glutAddMenuEntry("Zoom Pixels",3);
+    glutAddMenuEntry("Just Red Channel",4);
+    glutAddMenuEntry("Just Green Channel",5);
+    glutAddMenuEntry("Just Blue Channel",6);
+    glutAddMenuEntry("Black and White", 7);
+    glutAddMenuEntry("Invert Colors", 8);
+    glutAttachMenu(GLUT_RIGHT_BUTTON);
+
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
@@ -123,6 +209,8 @@ int main(int argc, char* argv[])
     SetupRC();
 
     glutMainLoop();
+
+    ShutdownRC();
 
     return 0;
     }
