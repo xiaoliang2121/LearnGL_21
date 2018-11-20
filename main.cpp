@@ -6,16 +6,21 @@
 
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
+#include "glframe.h"
 #include <string>
+#include <cmath>
 
-// Rotation amounts
-static GLfloat xRot = 0.0f;
-static GLfloat yRot = 0.0f;
+GLenum cube[6] = {GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+                  GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+                  GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+                  GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+                  GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+                  GL_TEXTURE_CUBE_MAP_NEGATIVE_Z};
 
-GLuint toTextures[2];       // Two texture objects
-int iRenderMode = 2;        // Sphere Mapped is default
+const char *szCubeFiles[6] = {"pos_x.tga", "neg_x.tga", "pos_y.tga",
+                              "neg_y.tga", "pos_z.tga", "neg_z.tga"};
 
-const char *szTextureFiles[2] = {"stripes.tga","Environment.tga"};
+GLFrame frameCamera;
 
 // Change viewing volume and viewport.  Called when window is resized
 void ChangeSize(int w, int h)
@@ -36,7 +41,7 @@ void ChangeSize(int w, int h)
     glLoadIdentity();
 
     // Produce the perspective projection
-    gluPerspective(45.0f, fAspect, 1.0f, 225.0f);
+    gluPerspective(35.0f, fAspect, 1.0f, 2000.0f);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -53,184 +58,217 @@ void SetupRC()
     GLenum eFormat;
 
     // Black background
-    glClearColor(0.0f, 0.0f, 0.0f,1.0f);
+//    glClearColor(0.0f, 0.0f, 0.0f,1.0f);
 
+    glCullFace(GL_BACK);
     glEnable(GL_DEPTH_TEST);
     glFrontFace(GL_CCW);
     glEnable(GL_CULL_FACE);
 
-    // Textures applied as decals, no lighting or coloring effects
-    glEnable(GL_TEXTURE_2D);
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+    // Set up texture maps
+    glTexParameteri(GL_TEXTURE_CUBE_MAP,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP,GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP,GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP,GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-    // Load textures
-    glGenTextures(2, toTextures);
+
+    // Load Cube Map images
     std::string path = "../LearnGL_21/Res/";
-    for(int iLoop = 0; iLoop < 2; iLoop++)
+    for(int iLoop = 0; iLoop < 6; iLoop++)
     {
-        // Bind to next texture object
-        glBindTexture(GL_TEXTURE_2D, toTextures[iLoop]);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP,GL_GENERATE_MIPMAP,GL_TRUE);
 
         // Load texture, set filter and wrap modes
-        std::string file = path+szTextureFiles[iLoop];
+        std::string file = path+szCubeFiles[iLoop];
         pBytes = gltLoadTGA(file.c_str(),&iWidth, &iHeight, &iComponents, &eFormat);
 
-        glTexImage2D(GL_TEXTURE_2D,0,iComponents,iWidth,iHeight,0,eFormat,
+        glTexImage2D(cube[iLoop],0,iComponents,iWidth,iHeight,0,eFormat,
                      GL_UNSIGNED_BYTE,pBytes);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
         // Don't need original texture data any more
         free(pBytes);
     }
 
-    // Turn on texture coordiante generation
-    glEnable(GL_TEXTURE_GEN_S);
-    glEnable(GL_TEXTURE_GEN_T);
+    glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
+    glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
+    glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
 
-    // Sphere Map will be the default
-    glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-    glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+    // Textures applied as decals, no lighting or coloring effects
+    glEnable(GL_TEXTURE_CUBE_MAP);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 }
 
 // Respond to arrow keys
 void SpecialKeys(int key, int x, int y)
 {
     if(key == GLUT_KEY_UP)
-        xRot-= 5.0f;
+        frameCamera.MoveForward(0.1f);
 
     if(key == GLUT_KEY_DOWN)
-        xRot += 5.0f;
+        frameCamera.MoveForward(-0.1f);
 
     if(key == GLUT_KEY_LEFT)
-        yRot -= 5.0f;
+        frameCamera.RotateLocalY(0.1f);
 
     if(key == GLUT_KEY_RIGHT)
-        yRot += 5.0f;
-
-    if(key > 356.0f)
-        xRot = 0.0f;
-
-    if(key < -1.0f)
-        xRot = 355.0f;
-
-    if(key > 356.0f)
-        yRot = 0.0f;
-
-    if(key < -1.0f)
-        yRot = 355.0f;
+        frameCamera.RotateLocalY(-0.1f);
 
     // Refresh the Window
     glutPostRedisplay();
 }
 
 
+///////////////////////////////////////////////////////////
+// Draw the skybox. This is just six quads, with texture
+// coordinates set to the corners of the cube map
+void DrawSkyBox(void)
+{
+    GLfloat fExtent = 15.0f;
+
+    glBegin(GL_QUADS);
+        //////////////////////////////////////////////
+        // Negative X
+        glTexCoord3f(-1.0f, -1.0f, 1.0f);
+        glVertex3f(-fExtent, -fExtent, fExtent);
+
+        glTexCoord3f(-1.0f, -1.0f, -1.0f);
+        glVertex3f(-fExtent, -fExtent, -fExtent);
+
+        glTexCoord3f(-1.0f, 1.0f, -1.0f);
+        glVertex3f(-fExtent, fExtent, -fExtent);
+
+        glTexCoord3f(-1.0f, 1.0f, 1.0f);
+        glVertex3f(-fExtent, fExtent, fExtent);
+
+
+        ///////////////////////////////////////////////
+        //  Postive X
+        glTexCoord3f(1.0f, -1.0f, -1.0f);
+        glVertex3f(fExtent, -fExtent, -fExtent);
+
+        glTexCoord3f(1.0f, -1.0f, 1.0f);
+        glVertex3f(fExtent, -fExtent, fExtent);
+
+        glTexCoord3f(1.0f, 1.0f, 1.0f);
+        glVertex3f(fExtent, fExtent, fExtent);
+
+        glTexCoord3f(1.0f, 1.0f, -1.0f);
+        glVertex3f(fExtent, fExtent, -fExtent);
+
+
+        ////////////////////////////////////////////////
+        // Negative Z
+        glTexCoord3f(-1.0f, -1.0f, -1.0f);
+        glVertex3f(-fExtent, -fExtent, -fExtent);
+
+        glTexCoord3f(1.0f, -1.0f, -1.0f);
+        glVertex3f(fExtent, -fExtent, -fExtent);
+
+        glTexCoord3f(1.0f, 1.0f, -1.0f);
+        glVertex3f(fExtent, fExtent, -fExtent);
+
+        glTexCoord3f(-1.0f, 1.0f, -1.0f);
+        glVertex3f(-fExtent, fExtent, -fExtent);
+
+
+        ////////////////////////////////////////////////
+        // Positive Z
+        glTexCoord3f(1.0f, -1.0f, 1.0f);
+        glVertex3f(fExtent, -fExtent, fExtent);
+
+        glTexCoord3f(-1.0f, -1.0f, 1.0f);
+        glVertex3f(-fExtent, -fExtent, fExtent);
+
+        glTexCoord3f(-1.0f, 1.0f, 1.0f);
+        glVertex3f(-fExtent, fExtent, fExtent);
+
+        glTexCoord3f(1.0f, 1.0f, 1.0f);
+        glVertex3f(fExtent, fExtent, fExtent);
+
+
+        //////////////////////////////////////////////////
+        // Positive Y
+        glTexCoord3f(-1.0f, 1.0f, 1.0f);
+        glVertex3f(-fExtent, fExtent, fExtent);
+
+        glTexCoord3f(-1.0f, 1.0f, -1.0f);
+        glVertex3f(-fExtent, fExtent, -fExtent);
+
+        glTexCoord3f(1.0f, 1.0f, -1.0f);
+        glVertex3f(fExtent, fExtent, -fExtent);
+
+        glTexCoord3f(1.0f, 1.0f, 1.0f);
+        glVertex3f(fExtent, fExtent, fExtent);
+
+
+        ///////////////////////////////////////////////////
+        // Negative Y
+        glTexCoord3f(-1.0f, -1.0f, -1.0f);
+        glVertex3f(-fExtent, -fExtent, -fExtent);
+
+        glTexCoord3f(-1.0f, -1.0f, 1.0f);
+        glVertex3f(-fExtent, -fExtent, fExtent);
+
+        glTexCoord3f(1.0f, -1.0f, 1.0f);
+        glVertex3f(fExtent, -fExtent, fExtent);
+
+        glTexCoord3f(1.0f, -1.0f, -1.0f);
+        glVertex3f(fExtent, -fExtent, -fExtent);
+    glEnd();
+}
+
+
 // Called to draw scene
 void RenderScene(void)
 {
-    // Clear the window with current clearing color
+    // Clear the window
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Switch to orthographic view for background drawing
-    glMatrixMode(GL_PROJECTION);
     glPushMatrix();
-    glLoadIdentity();
-    gluOrtho2D(0.0f, 1.0f, 0.0f, 1.0f);
+        frameCamera.ApplyCameraTransform(); // Move the camera about
 
-    glMatrixMode(GL_MODELVIEW);
-    glBindTexture(GL_TEXTURE_2D, toTextures[1]);    // Background texture
+        // Sky Box is manually textured
+        glDisable(GL_TEXTURE_GEN_S);
+        glDisable(GL_TEXTURE_GEN_T);
+        glDisable(GL_TEXTURE_GEN_R);
+        DrawSkyBox();
 
-    // We will specify texture coordinates
-    glDisable(GL_TEXTURE_GEN_S);
-    glDisable(GL_TEXTURE_GEN_T);
+        // Use texgen to apply cube map
+        glEnable(GL_TEXTURE_GEN_S);
+        glEnable(GL_TEXTURE_GEN_T);
+        glEnable(GL_TEXTURE_GEN_R);
 
-    // No depth buffer writes for background
-    glDepthMask(GL_FALSE);
+        glPushMatrix();
+            glTranslatef(0.0f, 0.0f, -3.0f);
 
-    // Background image
-    glBegin(GL_QUADS);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex2f(0.0f, 0.0f);
+            glMatrixMode(GL_TEXTURE);
+            glPushMatrix();
 
-        glTexCoord2f(1.0f, 0.0f);
-        glVertex2f(1.0f, 0.0f);
+            // Invert camera matrix (rotation only) and apply to
+            // texture coordinates
+            M3DMatrix44f m, invert;
+            frameCamera.GetCameraOrientation(m);
+            m3dInvertMatrix44(invert, m);
+            glMultMatrixf(invert);
 
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex2f(1.0f, 1.0f);
+            gltDrawSphere(0.75f, 41, 41);
 
-        glTexCoord2f(0.0f, 1.0f);
-        glVertex2f(0.0f, 1.0f);
-    glEnd();
+            glPopMatrix();
+            glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
 
-    // Back to 3D land
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-
-    // Turn texgen and depth writing back on
-    glEnable(GL_TEXTURE_GEN_S);
-    glEnable(GL_TEXTURE_GEN_T);
-    glDepthMask(GL_TRUE);
-
-    // May need to swtich to stripe texture
-    if(iRenderMode != 2)
-        glBindTexture(GL_TEXTURE_2D, toTextures[0]);
-
-    // Save the matrix state and do the rotations
-    glPushMatrix();
-    glTranslatef(0.0f, 0.0f, -2.0f);
-    glRotatef(xRot, 1.0f, 0.0f, 0.0f);
-    glRotatef(yRot, 0.0f, 1.0f, 0.0f);
-
-    // Draw the tours
-    gltDrawTorus(0.35, 0.15, 61, 37);
-
-    // Restore the matrix state
     glPopMatrix();
 
-    // Display the results
+    // Do the buffer Swap
     glutSwapBuffers();
 }
 
-void ProcessMenu(int value){
-    // Projection plane
-    GLfloat zPlane[] = { 0.0f, 0.0f, 1.0f, 0.0f };
-
-    // Store render mode
-    iRenderMode = value;
-
-    // Set up textgen based on menu selection
-    switch (value) {
-    case 0:
-        glTexGeni(GL_S,GL_TEXTURE_GEN_MODE,GL_OBJECT_LINEAR);
-        glTexGeni(GL_T,GL_TEXTURE_GEN_MODE,GL_OBJECT_LINEAR);
-        glTexGenfv(GL_S,GL_OBJECT_PLANE,zPlane);
-        glTexGenfv(GL_T,GL_OBJECT_PLANE,zPlane);
-
-        break;
-
-    case 1:
-        glTexGeni(GL_S,GL_TEXTURE_GEN_MODE,GL_EYE_LINEAR);
-        glTexGeni(GL_T,GL_TEXTURE_GEN_MODE,GL_EYE_LINEAR);
-        glTexGenfv(GL_S,GL_EYE_PLANE,zPlane);
-        glTexGenfv(GL_T,GL_EYE_PLANE,zPlane);
-
-        break;
-
-    case 2:
-    default:
-        glTexGeni(GL_S,GL_TEXTURE_GEN_MODE,GL_SPHERE_MAP);
-        glTexGeni(GL_T,GL_TEXTURE_GEN_MODE,GL_SPHERE_MAP);
-
-        break;
-    }
-
-    // Trigger Redraw
+void TimerFunc(int value){
     glutPostRedisplay();
+    glutTimerFunc(33,TimerFunc,1);
 }
+
 
 ///////////////////////////////////////////////////////////
 // Main program entry point
@@ -239,19 +277,13 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("Texture Coordinate Generation");
+    glutCreateWindow("OpenGL Cube Maps");
 
     glutReshapeFunc(ChangeSize);
     glutSpecialFunc(SpecialKeys);
     glutDisplayFunc(RenderScene);
 
-    // add menu
-    glutCreateMenu(ProcessMenu);
-    glutAddMenuEntry("Object Linear",0);
-    glutAddMenuEntry("Eye Linear",1);
-    glutAddMenuEntry("Sphere Map",2);
-    glutAttachMenu(GLUT_RIGHT_BUTTON);
-
+    glutTimerFunc(33,TimerFunc,1);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
@@ -267,8 +299,6 @@ int main(int argc, char* argv[])
     SetupRC();
 
     glutMainLoop();
-
-    glDeleteTextures(2,toTextures);
 
     return 0;
 }
