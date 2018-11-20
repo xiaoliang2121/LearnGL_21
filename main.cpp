@@ -79,20 +79,6 @@ void SetupRC()
 
         free(pBytes);
     }
-
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    pBytes = gltLoadTGA("../LearnGL_21/Res/stone.tga", &iWidth, &iHeight, &iComponents, &eFormat);
-    glTexImage2D(GL_TEXTURE_2D, 0, iComponents, iWidth, iHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBytes);
-    free(pBytes);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glEnable(GL_TEXTURE_2D);
 }
 
 void ShutdownRC(){
