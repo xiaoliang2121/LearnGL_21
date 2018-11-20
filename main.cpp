@@ -13,7 +13,7 @@ static GLfloat xRot = 0.0f;
 static GLfloat yRot = 0.0f;
 
 GLuint toTextures[2];       // Two texture objects
-int iRenderMode = 3;        // Sphere Mapped is default
+int iRenderMode = 2;        // Sphere Mapped is default
 
 const char *szTextureFiles[2] = {"stripes.tga","Environment.tga"};
 
@@ -176,7 +176,7 @@ void RenderScene(void)
     glDepthMask(GL_TRUE);
 
     // May need to swtich to stripe texture
-    if(iRenderMode != 3)
+    if(iRenderMode != 2)
         glBindTexture(GL_TEXTURE_2D, toTextures[0]);
 
     // Save the matrix state and do the rotations
