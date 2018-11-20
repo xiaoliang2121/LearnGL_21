@@ -53,32 +53,65 @@ void SetupRC()
     GLbyte *pBytes;
     GLint iWidth, iHeight, iComponents;
     GLenum eFormat;
+    GLint iLoop;
 
-    // Black blue background
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
+    // Black background
+    glClearColor(0.0f, 0.0f, 0.0f,1.0f);
 
+    // Textures applied as decals, no lighting or coloring effects
     glEnable(GL_TEXTURE_2D);
-    glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_DECAL);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 
-    // Load texture
+    // Load textures
     glGenTextures(TEXTURE_COUNT, textures);
     std::string path = "../LearnGL_21/Res/";
-    for(int i=0; i<TEXTURE_COUNT; i++)
+    for(iLoop = 0; iLoop < TEXTURE_COUNT; iLoop++)
     {
-        glBindTexture(GL_TEXTURE_2D,textures[i]);
+        // Bind to next texture object
+        glBindTexture(GL_TEXTURE_2D, textures[iLoop]);
 
-        std::string file = path+szTextureFiles[i];
-        pBytes = gltLoadTGA(file.c_str(),&iWidth,&iHeight,&iComponents,&eFormat);
-
-        gluBuild2DMipmaps(GL_TEXTURE_2D, iComponents, iWidth, iHeight, eFormat, \
-                          GL_UNSIGNED_BYTE, pBytes);
+        // Load texture, set filter and wrap modes
+        std::string file = path+szTextureFiles[iLoop];
+        pBytes = gltLoadTGA(file.c_str(),&iWidth, &iHeight, &iComponents, &eFormat);
+        gluBuild2DMipmaps(GL_TEXTURE_2D, iComponents, iWidth, iHeight, eFormat, GL_UNSIGNED_BYTE, pBytes);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+        // Don't need original texture data any more
         free(pBytes);
     }
+
+//    GLbyte *pBytes;
+//    GLint iWidth, iHeight, iComponents;
+//    GLenum eFormat;
+
+//    // Black blue background
+//    glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
+
+//    glEnable(GL_TEXTURE_2D);
+//    glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_DECAL);
+
+//    // Load texture
+//    glGenTextures(TEXTURE_COUNT, textures);
+//    std::string path = "../LearnGL_21/Res/";
+//    for(int i=0; i<TEXTURE_COUNT; i++)
+//    {
+//        glBindTexture(GL_TEXTURE_2D,textures[i]);
+
+//        std::string file = path+szTextureFiles[i];
+//        pBytes = gltLoadTGA(file.c_str(),&iWidth,&iHeight,&iComponents,&eFormat);
+
+//        gluBuild2DMipmaps(GL_TEXTURE_2D, iComponents, iWidth, iHeight, eFormat, \
+//                          GL_UNSIGNED_BYTE, pBytes);
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+//        free(pBytes);
+//    }
 }
 
 void ShutdownRC(){
@@ -184,6 +217,7 @@ void RenderScene(void)
 
 void ProcessMenu(int value){
     GLint iLoop;
+    GLfloat fLargest;
 
     for(iLoop = 0; iLoop < TEXTURE_COUNT; iLoop++)
     {
@@ -215,6 +249,16 @@ void ProcessMenu(int value){
         default:
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
             break;
+
+        case 6:
+            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT,&fLargest);
+            glTexParameterf(GL_TEXTURE_2D,GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT,
+                            fLargest);
+            break;
+
+        case 7:
+            glTexParameterf(GL_TEXTURE_2D,GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT,1.0f);
+            break;
         }
     }
 
@@ -229,7 +273,13 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowSize(800,600);
-    glutCreateWindow("Tunnel");
+    glutCreateWindow("Anisotropic Tunnel");
+
+    if(gltIsExtSupported("GL_EXT_texture_filter_anisotropic") == 0)
+    {
+        printf("not support anisotropic\n");
+        return 0;
+    }
 
     glutReshapeFunc(ChangeSize);
     glutSpecialFunc(SpecialKeys);
@@ -243,6 +293,8 @@ int main(int argc, char* argv[])
     glutAddMenuEntry("GL_NEAREST_MIPMAP_LINEAR",3);
     glutAddMenuEntry("GL_LINEAR_MIPMAP_NEAREST",4);
     glutAddMenuEntry("GL_LINEAR_MIPMAP_LINEAR",5);
+    glutAddMenuEntry("Anisotropic Filter",6);
+    glutAddMenuEntry("Anisotropic Off",7);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 
 
