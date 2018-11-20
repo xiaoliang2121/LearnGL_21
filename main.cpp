@@ -7,102 +7,173 @@
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
 
-// Bitmap of camp fire
-GLubyte fire[128] = { 0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0xc0,
-                   0x00, 0x00, 0x01, 0xf0,
-                   0x00, 0x00, 0x07, 0xf0,
-                   0x0f, 0x00, 0x1f, 0xe0,
-                   0x1f, 0x80, 0x1f, 0xc0,
-                   0x0f, 0xc0, 0x3f, 0x80,
-                   0x07, 0xe0, 0x7e, 0x00,
-                   0x03, 0xf0, 0xff, 0x80,
-                   0x03, 0xf5, 0xff, 0xe0,
-                   0x07, 0xfd, 0xff, 0xf8,
-                   0x1f, 0xfc, 0xff, 0xe8,
-                   0xff, 0xe3, 0xbf, 0x70,
-                   0xde, 0x80, 0xb7, 0x00,
-                   0x71, 0x10, 0x4a, 0x80,
-                   0x03, 0x10, 0x4e, 0x40,
-                   0x02, 0x88, 0x8c, 0x20,
-                   0x05, 0x05, 0x04, 0x40,
-                   0x02, 0x82, 0x14, 0x40,
-                   0x02, 0x40, 0x10, 0x80,
-                   0x02, 0x64, 0x1a, 0x80,
-                   0x00, 0x92, 0x29, 0x00,
-                   0x00, 0xb0, 0x48, 0x00,
-                   0x00, 0xc8, 0x90, 0x00,
-                   0x00, 0x85, 0x10, 0x00,
-                   0x00, 0x03, 0x00, 0x00,
-                   0x00, 0x00, 0x10, 0x00 };
-
-///////////////////////////////////////////////////////////
-// Called to draw scene
-void RenderScene(void)
-{
-    int x,y;
-
-    // Clear the window with current clearing color
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    // Set color to white
-    glColor3f(1.0f, 1.0f, 1.0f);
-
-    for(y=0; y<16; y++)
-    {
-        glRasterPos2i(0,y*32);
-        for(x=0; x<16; x++)
-            glBitmap(32,32,0.0f,0.0f,32.0f,0.0f,fire);
-    }
+// Rotation amounts
+static GLfloat xRot = 0.0f;
+static GLfloat yRot = 0.0f;
 
 
-    // Flush drawing commands
-    glutSwapBuffers();
-}
-
-// Set coordinate system to match window coordinates
+////////////////////////////////////////////////////////////////////////////
+// Change viewing volume and viewport.  Called when window is resized
 void ChangeSize(int w, int h)
 {
-    // Prevent a divide by zero, when window is too short
-    // (you cant make a window of zero width).
+    GLfloat fAspect;
+
+    // Prevent a divide by zero
     if(h == 0)
         h = 1;
 
+    // Set Viewport to window dimensions
     glViewport(0, 0, w, h);
 
-    // Reset the coordinate system before modifying
+    fAspect = (GLfloat)w/(GLfloat)h;
+
+    // Reset coordinate system
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    // Psuedo window coordinates
-    gluOrtho2D(0.0, (GLfloat) w, 0.0f, (GLfloat) h);
+    // Produce the perspective projection
+    gluPerspective(35.0f, fAspect, 1.0, 40.0);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 }
 
-///////////////////////////////////////////////////////////
-// Setup the rendering state
-void SetupRC(void)
+
+// This function does any needed initialization on the rendering
+// context.  Here it sets up and initializes the lighting for
+// the scene.
+void SetupRC()
 {
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    // Light values and coordinates
+    GLfloat  whiteLight[] = { 0.05f, 0.05f, 0.05f, 1.0f };
+    GLfloat  sourceLight[] = { 0.25f, 0.25f, 0.25f, 1.0f };
+    GLfloat	 lightPos[] = { -10.f, 5.0f, 5.0f, 1.0f };
+
+    glEnable(GL_DEPTH_TEST);	// Hidden surface removal
+    glFrontFace(GL_CCW);		// Counter clock-wise polygons face out
+    glEnable(GL_CULL_FACE);		// Do not calculate inside
+
+    // Enable lighting
+    glEnable(GL_LIGHTING);
+
+    // Setup and enable light 0
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT,whiteLight);
+    glLightfv(GL_LIGHT0,GL_AMBIENT,sourceLight);
+    glLightfv(GL_LIGHT0,GL_DIFFUSE,sourceLight);
+    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
+    glEnable(GL_LIGHT0);
+
+    // Enable color tracking
+    glEnable(GL_COLOR_MATERIAL);
+
+    // Set Material properties to follow glColor values
+    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+
+    // Black blue background
+    glClearColor(0.25f, 0.25f, 0.50f, 1.0f );
+}
+
+// Respond to arrow keys
+void SpecialKeys(int key, int x, int y)
+{
+    if(key == GLUT_KEY_UP)
+        xRot-= 5.0f;
+
+    if(key == GLUT_KEY_DOWN)
+        xRot += 5.0f;
+
+    if(key == GLUT_KEY_LEFT)
+        yRot -= 5.0f;
+
+    if(key == GLUT_KEY_RIGHT)
+        yRot += 5.0f;
+
+        xRot = (GLfloat)((const int)xRot % 360);
+        yRot = (GLfloat)((const int)yRot % 360);
+
+    // Refresh the Window
+    glutPostRedisplay();
+}
+
+
+// Called to draw scene
+void RenderScene(void)
+{
+    GLUquadricObj *pObj;	// Quadric Object
+
+    // Clear the window with current clearing color
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Save the matrix state and do the rotations
+    glPushMatrix();
+        // Move object back and do in place rotation
+        glTranslatef(0.0f, -1.0f, -5.0f);
+        glRotatef(xRot, 1.0f, 0.0f, 0.0f);
+        glRotatef(yRot, 0.0f, 1.0f, 0.0f);
+
+        // Draw something
+        pObj = gluNewQuadric();
+        gluQuadricNormals(pObj, GLU_SMOOTH);
+
+        // Main Body
+        glPushMatrix();
+            glColor3f(1.0f, 1.0f, 1.0f);
+            gluSphere(pObj, .40f, 26, 13);  // Bottom
+
+            glTranslatef(0.0f, .550f, 0.0f); // Mid section
+            gluSphere(pObj, .3f, 26, 13);
+
+            glTranslatef(0.0f, 0.45f, 0.0f); // Head
+            gluSphere(pObj, 0.24f, 26, 13);
+
+            // Eyes
+            glColor3f(0.0f, 0.0f, 0.0f);
+            glTranslatef(0.1f, 0.1f, 0.21f);
+            gluSphere(pObj, 0.02f, 26, 13);
+
+            glTranslatef(-0.2f, 0.0f, 0.0f);
+            gluSphere(pObj, 0.02f, 26, 13);
+
+            // Nose
+            glColor3f(1.0f, 0.3f, 0.3f);
+            glTranslatef(0.1f, -0.12f, 0.0f);
+            gluCylinder(pObj, 0.04f, 0.0f, 0.3f, 26, 13);
+        glPopMatrix();
+
+        // Hat
+        glPushMatrix();
+            glColor3f(0.0f, 0.0f, 0.0f);
+            glTranslatef(0.0f, 1.17f, 0.0f);
+            glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+            gluCylinder(pObj, 0.17f, 0.17f, 0.4f, 26, 13);
+
+            // Hat brim
+            glDisable(GL_CULL_FACE);
+            gluDisk(pObj, 0.17f, 0.28f, 26, 13);
+            glEnable(GL_CULL_FACE);
+
+            glTranslatef(0.0f, 0.0f, 0.40f);
+            gluDisk(pObj, 0.0f, 0.17f, 26, 13);
+        glPopMatrix();
+
+    // Restore the matrix state
+    glPopMatrix();
+
+    // Buffer swap
+    glutSwapBuffers();
 }
 
 ///////////////////////////////////////////////////////////
 // Main program entry point
 int main(int argc, char* argv[])
-    {
+{
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-    glutInitWindowSize(512, 512);
-    glutCreateWindow("OpenGL Bitmaps");
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("Modeling with Quadrics");
 
     glutDisplayFunc(RenderScene);
+    glutSpecialFunc(SpecialKeys);
     glutReshapeFunc(ChangeSize);
 
     // 获取OpenGL版本号和厂商信息
@@ -121,5 +192,5 @@ int main(int argc, char* argv[])
     glutMainLoop();
 
     return 0;
-    }
+}
 
