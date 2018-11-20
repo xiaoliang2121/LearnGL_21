@@ -6,297 +6,340 @@
 
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
+#include "glframe.h"
 #include <string>
+#include <cmath>
 
-// Texture objects
-#define TEXTURE_BRICK   0
-#define TEXTURE_FLOOR   1
-#define TEXTURE_CEILING 2
-#define TEXTURE_COUNT   3
+GLFrame    frameCamera;             // The camera
 
-GLuint textures[TEXTURE_COUNT];
-const char *szTextureFiles[TEXTURE_COUNT] = {"brick.tga", "floor.tga", "ceiling.tga"};
-// Rotation amounts
-static GLfloat zPos = -60.0f;
+// Storeage for two texture objects
+GLuint      textureObjects[2];
+#define CUBE_MAP    0
+#define COLOR_MAP   1
 
-// Change viewing volume and viewport.  Called when window is resized
-void ChangeSize(int w, int h)
-{
-    GLfloat fAspect;
+// Six sides of a cube map
+const char *szCubeFaces[6] = { "pos_x.tga", "neg_x.tga", "pos_y.tga", "neg_y.tga", "pos_z.tga", "neg_z.tga" };
 
-    // Prevent a divide by zero
-    if(h == 0)
-        h = 1;
-
-    // Set Viewport to window dimensions
-    glViewport(0, 0, w, h);
-
-    fAspect = (GLfloat)w/(GLfloat)h;
-
-    // Reset coordinate system
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-
-    // Produce the perspective projection
-    gluPerspective(90.0f,fAspect,1,120);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-}
+GLenum  cube[6] = {  GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+                     GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+                     GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+                     GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+                     GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+                     GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
 
 
+//////////////////////////////////////////////////////////////////
 // This function does any needed initialization on the rendering
-// context.  Here it sets up and initializes the lighting for
-// the scene.
+// context.
 void SetupRC()
-{
+    {
     GLbyte *pBytes;
     GLint iWidth, iHeight, iComponents;
     GLenum eFormat;
-    GLint iLoop;
+    int i;
 
-    // Black background
-    glClearColor(0.0f, 0.0f, 0.0f,1.0f);
+    // Cull backs of polygons
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
 
-    // Textures applied as decals, no lighting or coloring effects
-    glEnable(GL_TEXTURE_2D);
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+    glGenTextures(2, textureObjects);
 
-    // Load textures
-    glGenTextures(TEXTURE_COUNT, textures);
+    // Set up texture maps
+
+    // Cube Map
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureObjects[CUBE_MAP]);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    // Load Cube Map images
     std::string path = "../LearnGL_21/Res/";
-    for(iLoop = 0; iLoop < TEXTURE_COUNT; iLoop++)
+    for(i = 0; i < 6; i++)
     {
-        // Bind to next texture object
-        glBindTexture(GL_TEXTURE_2D, textures[iLoop]);
+        // Load this texture map
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_GENERATE_MIPMAP, GL_TRUE);
 
-        // Load texture, set filter and wrap modes
-        std::string file = path+szTextureFiles[iLoop];
-        pBytes = gltLoadTGA(file.c_str(),&iWidth, &iHeight, &iComponents, &eFormat);
-        gluBuild2DMipmaps(GL_TEXTURE_2D, iComponents, iWidth, iHeight, eFormat, GL_UNSIGNED_BYTE, pBytes);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        // Don't need original texture data any more
+        std::string file = path+szCubeFaces[i];
+        pBytes = gltLoadTGA(file.c_str(), &iWidth, &iHeight, &iComponents, &eFormat);
+        glTexImage2D(cube[i], 0, iComponents, iWidth, iHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBytes);
         free(pBytes);
     }
 
-//    GLbyte *pBytes;
-//    GLint iWidth, iHeight, iComponents;
-//    GLenum eFormat;
+    // Color map
+    glBindTexture(GL_TEXTURE_2D, textureObjects[COLOR_MAP]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-//    // Black blue background
-//    glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
+    glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+    pBytes = gltLoadTGA("../LearnGL_21/Res/tarnish.tga", &iWidth, &iHeight, &iComponents, &eFormat);
+    glTexImage2D(GL_TEXTURE_2D, 0, iComponents, iWidth, iHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBytes);
+    free(pBytes);
 
-//    glEnable(GL_TEXTURE_2D);
-//    glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_DECAL);
+    /////////////////////////////////////////////////////////////////////
+    // Set up the texture units
 
-//    // Load texture
-//    glGenTextures(TEXTURE_COUNT, textures);
-//    std::string path = "../LearnGL_21/Res/";
-//    for(int i=0; i<TEXTURE_COUNT; i++)
-//    {
-//        glBindTexture(GL_TEXTURE_2D,textures[i]);
+    // First texture unit contains the color map
+    glActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textureObjects[COLOR_MAP]);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);   // Decal tarnish
 
-//        std::string file = path+szTextureFiles[i];
-//        pBytes = gltLoadTGA(file.c_str(),&iWidth,&iHeight,&iComponents,&eFormat);
+    // Second texture unit contains the cube map
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureObjects[CUBE_MAP]);
+    glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
+    glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
+    glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
+    glEnable(GL_TEXTURE_CUBE_MAP);
 
-//        gluBuild2DMipmaps(GL_TEXTURE_2D, iComponents, iWidth, iHeight, eFormat, \
-//                          GL_UNSIGNED_BYTE, pBytes);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    // Multiply this texture by the one underneath
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    }
 
-//        free(pBytes);
-//    }
-}
 
-void ShutdownRC(){
-    glDeleteTextures(TEXTURE_COUNT, textures);
-}
+///////////////////////////////////////////////////////////
+// Cleanup
+void ShutdownRC(void)
+    {
+    glDeleteTextures(2, textureObjects);
+    }
 
-// Respond to arrow keys
-void SpecialKeys(int key, int x, int y)
-{
-    if(key == GLUT_KEY_UP)
-        zPos += 1.0f;
 
-    if(key == GLUT_KEY_DOWN)
-        zPos -= 1.0f;
+///////////////////////////////////////////////////////////
+// Draw the skybox. This is just six quads, with texture
+// coordinates set to the corners of the cube map
+void DrawSkyBox(void)
+    {
+    GLfloat fExtent = 15.0f;
 
-    // Refresh the Window
-    glutPostRedisplay();
-}
+    glBegin(GL_QUADS);
+        //////////////////////////////////////////////
+        // Negative X
+        // Note, we must now use the multi-texture version of glTexCoord
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, 1.0f);
+        glVertex3f(-fExtent, -fExtent, fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, -1.0f);
+        glVertex3f(-fExtent, -fExtent, -fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, -1.0f);
+        glVertex3f(-fExtent, fExtent, -fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, 1.0f);
+        glVertex3f(-fExtent, fExtent, fExtent);
+
+
+        ///////////////////////////////////////////////
+        //  Postive X
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, -1.0f);
+        glVertex3f(fExtent, -fExtent, -fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, 1.0f);
+        glVertex3f(fExtent, -fExtent, fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, 1.0f);
+        glVertex3f(fExtent, fExtent, fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, -1.0f);
+        glVertex3f(fExtent, fExtent, -fExtent);
+
+
+        ////////////////////////////////////////////////
+        // Negative Z
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, -1.0f);
+        glVertex3f(-fExtent, -fExtent, -fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, -1.0f);
+        glVertex3f(fExtent, -fExtent, -fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, -1.0f);
+        glVertex3f(fExtent, fExtent, -fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, -1.0f);
+        glVertex3f(-fExtent, fExtent, -fExtent);
+
+
+        ////////////////////////////////////////////////
+        // Positive Z
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, 1.0f);
+        glVertex3f(fExtent, -fExtent, fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, 1.0f);
+        glVertex3f(-fExtent, -fExtent, fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, 1.0f);
+        glVertex3f(-fExtent, fExtent, fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, 1.0f);
+        glVertex3f(fExtent, fExtent, fExtent);
+
+
+        //////////////////////////////////////////////////
+        // Positive Y
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, 1.0f);
+        glVertex3f(-fExtent, fExtent, fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, -1.0f);
+        glVertex3f(-fExtent, fExtent, -fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, -1.0f);
+        glVertex3f(fExtent, fExtent, -fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, 1.0f);
+        glVertex3f(fExtent, fExtent, fExtent);
+
+
+        ///////////////////////////////////////////////////
+        // Negative Y
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, -1.0f);
+        glVertex3f(-fExtent, -fExtent, -fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, 1.0f);
+        glVertex3f(-fExtent, -fExtent, fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, 1.0f);
+        glVertex3f(fExtent, -fExtent, fExtent);
+
+        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, -1.0f);
+        glVertex3f(fExtent, -fExtent, -fExtent);
+    glEnd();
+    }
 
 
 // Called to draw scene
 void RenderScene(void)
-{
-    GLfloat z;
-
-    // Clear the window with current clearing color
-    glClear(GL_COLOR_BUFFER_BIT);
+    {
+    // Clear the window
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glPushMatrix();
-        glTranslatef(0.0f, 0.0f, zPos);
+        frameCamera.ApplyCameraTransform(); // Move the camera about
 
-        // Floor
-        for(z = 60.0f; z >= 0.0f; z -= 10)
-        {
-            glBindTexture(GL_TEXTURE_2D, textures[TEXTURE_FLOOR]);
-            glBegin(GL_QUADS);
-                glTexCoord2f(0.0f, 0.0f);
-                glVertex3f(-10.0f, -10.0f, z);
+        // Sky Box is manually textured
+        glActiveTexture(GL_TEXTURE0);
+        glDisable(GL_TEXTURE_2D);
+        glActiveTexture(GL_TEXTURE1);
 
-                glTexCoord2f(1.0f, 0.0f);
-                glVertex3f(10.0f, -10.0f, z);
-
-                glTexCoord2f(1.0f, 1.0f);
-                glVertex3f(10.0f, -10.0f, z - 10.0f);
-
-                glTexCoord2f(0.0f, 1.0f);
-                glVertex3f(-10.0f, -10.0f, z - 10.0f);
-            glEnd();
-
-            // Ceiling
-            glBindTexture(GL_TEXTURE_2D, textures[TEXTURE_CEILING]);
-            glBegin(GL_QUADS);
-                glTexCoord2f(0.0f, 1.0f);
-                glVertex3f(-10.0f, 10.0f, z - 10.0f);
-
-                glTexCoord2f(1.0f, 1.0f);
-                glVertex3f(10.0f, 10.0f, z - 10.0f);
-
-                glTexCoord2f(1.0f, 0.0f);
-                glVertex3f(10.0f, 10.0f, z);
-
-                glTexCoord2f(0.0f, 0.0f);
-                glVertex3f(-10.0f, 10.0f, z);
-            glEnd();
+        glEnable(GL_TEXTURE_CUBE_MAP);
+        glDisable(GL_TEXTURE_GEN_S);
+        glDisable(GL_TEXTURE_GEN_T);
+        glDisable(GL_TEXTURE_GEN_R);
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+        DrawSkyBox();
 
 
-            // Left Wall
-            glBindTexture(GL_TEXTURE_2D, textures[TEXTURE_BRICK]);
-            glBegin(GL_QUADS);
-                glTexCoord2f(0.0f, 0.0f);
-                glVertex3f(-10.0f, -10.0f, z);
+        // Use texgen to apply cube map
+        glEnable(GL_TEXTURE_GEN_S);
+        glEnable(GL_TEXTURE_GEN_T);
+        glEnable(GL_TEXTURE_GEN_R);
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-                glTexCoord2f(1.0f, 0.0f);
-                glVertex3f(-10.0f, -10.0f, z - 10.0f);
+        glActiveTexture(GL_TEXTURE0);
+        glEnable(GL_TEXTURE_2D);
 
-                glTexCoord2f(1.0f, 1.0f);
-                glVertex3f(-10.0f, 10.0f, z - 10.0f);
+        glPushMatrix();
+            glTranslatef(0.0f, 0.0f, -3.0f);
 
-                glTexCoord2f(0.0f, 1.0f);
-                glVertex3f(-10.0f, 10.0f, z);
-            glEnd();
+            glActiveTexture(GL_TEXTURE1);
+            glMatrixMode(GL_TEXTURE);
+            glPushMatrix();
 
+            // Invert camera matrix (rotation only) and apply to
+            // texture coordinates
+            M3DMatrix44f m, invert;
+            frameCamera.GetCameraOrientation(m);
+            m3dInvertMatrix44(invert, m);
+            glMultMatrixf(invert);
 
-            // Right Wall
-            glBegin(GL_QUADS);
-                glTexCoord2f(0.0f, 1.0f);
-                glVertex3f(10.0f, 10.0f, z);
+            glColor3f(1.0f, 1.0f, 1.0f);
+            gltDrawSphere(0.75f, 41, 41);
 
-                glTexCoord2f(1.0f, 1.0f);
-                glVertex3f(10.0f, 10.0f, z - 10.0f);
+            glPopMatrix();
+            glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
 
-                glTexCoord2f(1.0f, 0.0f);
-                glVertex3f(10.0f, -10.0f, z - 10.0f);
-
-                glTexCoord2f(0.0f, 0.0f);
-                glVertex3f(10.0f, -10.0f, z);
-            glEnd();
-        }
     glPopMatrix();
 
+    // Do the buffer Swap
     glutSwapBuffers();
-}
-
-void ProcessMenu(int value){
-    GLint iLoop;
-    GLfloat fLargest;
-
-    for(iLoop = 0; iLoop < TEXTURE_COUNT; iLoop++)
-    {
-        glBindTexture(GL_TEXTURE_2D, textures[iLoop]);
-
-        switch(value)
-        {
-        case 0:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            break;
-
-        case 1:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            break;
-
-        case 2:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-            break;
-
-        case 3:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-            break;
-
-        case 4:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-            break;
-
-        case 5:
-        default:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            break;
-
-        case 6:
-            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT,&fLargest);
-            glTexParameterf(GL_TEXTURE_2D,GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT,
-                            fLargest);
-            break;
-
-        case 7:
-            glTexParameterf(GL_TEXTURE_2D,GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT,1.0f);
-            break;
-        }
     }
 
-    // Trigger Redraw
+
+
+// Respond to arrow keys by moving the camera frame of reference
+void SpecialKeys(int key, int x, int y)
+    {
+    if(key == GLUT_KEY_UP)
+        frameCamera.MoveForward(0.1f);
+
+    if(key == GLUT_KEY_DOWN)
+        frameCamera.MoveForward(-0.1f);
+
+    if(key == GLUT_KEY_LEFT)
+        frameCamera.RotateLocalY(0.1);
+
+    if(key == GLUT_KEY_RIGHT)
+        frameCamera.RotateLocalY(-0.1);
+
+    // Refresh the Window
     glutPostRedisplay();
-}
+    }
+
+
+///////////////////////////////////////////////////////////
+// Called by GLUT library when idle (window not being
+// resized or moved)
+void TimerFunction(int value)
+    {
+    // Redraw the scene with new coordinates
+    glutPostRedisplay();
+    glutTimerFunc(3,TimerFunction, 1);
+    }
+
+void ChangeSize(int w, int h)
+    {
+    GLfloat fAspect;
+
+    // Prevent a divide by zero, when window is too short
+    // (you cant make a window of zero width).
+    if(h == 0)
+        h = 1;
+
+    glViewport(0, 0, w, h);
+
+    fAspect = (GLfloat)w / (GLfloat)h;
+
+    // Reset the coordinate system before modifying
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+    // Set the clipping volume
+    gluPerspective(35.0f, fAspect, 1.0f, 2000.0f);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    }
 
 ///////////////////////////////////////////////////////////
 // Main program entry point
 int main(int argc, char* argv[])
 {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("Anisotropic Tunnel");
-
-    if(gltIsExtSupported("GL_EXT_texture_filter_anisotropic") == 0)
-    {
-        printf("not support anisotropic\n");
-        return 0;
-    }
+    glutCreateWindow("OpenGL Cube Maps");
 
     glutReshapeFunc(ChangeSize);
     glutSpecialFunc(SpecialKeys);
-    glutDisplayFunc(RenderScene);
+    glutDisplayFunc(RenderScene); 
 
-    // add menu
-    glutCreateMenu(ProcessMenu);
-    glutAddMenuEntry("GL_NEAREST",0);
-    glutAddMenuEntry("GL_LINEAR",1);
-    glutAddMenuEntry("GL_NEAREST_MIPMAP_NEAREST",2);
-    glutAddMenuEntry("GL_NEAREST_MIPMAP_LINEAR",3);
-    glutAddMenuEntry("GL_LINEAR_MIPMAP_NEAREST",4);
-    glutAddMenuEntry("GL_LINEAR_MIPMAP_LINEAR",5);
-    glutAddMenuEntry("Anisotropic Filter",6);
-    glutAddMenuEntry("Anisotropic Off",7);
-    glutAttachMenu(GLUT_RIGHT_BUTTON);
-
+    glutTimerFunc(33,TimerFunction,1);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
@@ -312,6 +355,8 @@ int main(int argc, char* argv[])
     SetupRC();
 
     glutMainLoop();
+
+    ShutdownRC();
 
     return 0;
 }
