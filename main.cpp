@@ -10,318 +10,252 @@
 #include <string>
 #include <cmath>
 
-GLFrame    frameCamera;             // The camera
+// Array of small stars
+#define SMALL_STARS 100
+M3DVector2f  vSmallStars[SMALL_STARS];
 
-// Storeage for two texture objects
-GLuint      textureObjects[2];
-#define CUBE_MAP    0
-#define COLOR_MAP   1
+#define MEDIUM_STARS   40
+M3DVector2f vMediumStars[MEDIUM_STARS];
 
-// Six sides of a cube map
-const char *szCubeFaces[6] = { "pos_x.tga", "neg_x.tga", "pos_y.tga", "neg_y.tga", "pos_z.tga", "neg_z.tga" };
+#define LARGE_STARS 15
+M3DVector2f vLargeStars[LARGE_STARS];
 
-GLenum  cube[6] = {  GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-                     GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
-                     GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
-                     GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-                     GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-                     GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
+#define SCREEN_X    800
+#define SCREEN_Y    600
+
+int drawMode = 1;       // Normal points
+
+GLuint  textureObjects[2];    // Texture Objects
+
+///////////////////////////////////////////////////////////////////////
+// Reset flags as appropriate in response to menu selections
+void ProcessMenu(int value)
+    {
+    drawMode = value;
+
+    switch(value)
+        {
+        case 1:
+            // Turn off blending and all smoothing
+            glDisable(GL_BLEND);
+            glDisable(GL_LINE_SMOOTH);
+            glDisable(GL_POINT_SMOOTH);
+            glDisable(GL_TEXTURE_2D);
+            glDisable(GL_POINT_SPRITE);
+            break;
+
+        case 2:
+            // Turn on antialiasing, and give hint to do the best
+            // job possible.
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glEnable(GL_BLEND);
+            glEnable(GL_POINT_SMOOTH);
+            glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+            glEnable(GL_LINE_SMOOTH);
+            glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+            glDisable(GL_TEXTURE_2D);
+            glDisable(GL_POINT_SPRITE);
+            break;
+
+        case 3:     // Point Sprites
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR);
+            glDisable(GL_LINE_SMOOTH);
+            glDisable(GL_POINT_SMOOTH);
+            glDisable(GL_POLYGON_SMOOTH);
+            break;
 
 
-//////////////////////////////////////////////////////////////////
+        default:
+            break;
+        }
+
+    // Trigger a redraw
+    glutPostRedisplay();
+    }
+
+
+///////////////////////////////////////////////////
+// Called to draw scene
+void RenderScene(void)
+    {
+    int i;                  // Loop variable
+    GLfloat x = 700.0f;     // Location and radius of moon
+    GLfloat y = 500.0f;
+    GLfloat r = 50.0f;
+    GLfloat angle = 0.0f;   // Another looping variable
+
+    // Clear the window
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Everything is white
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    if(drawMode == 3)
+        {
+        glEnable(GL_POINT_SPRITE);
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, textureObjects[0]);
+        glEnable(GL_BLEND);
+        }
+
+    // Draw small stars
+    glPointSize(7.0f);          // 1.0
+    glBegin(GL_POINTS);
+        for(i = 0; i < SMALL_STARS; i++)
+            glVertex2fv(vSmallStars[i]);
+    glEnd();
+
+    // Draw medium sized stars
+    glPointSize(12.0f);         // 3.0
+    glBegin(GL_POINTS);
+        for(i = 0; i< MEDIUM_STARS; i++)
+            glVertex2fv(vMediumStars[i]);
+    glEnd();
+
+    // Draw largest stars
+    glPointSize(20.0f);      // 5.5
+    glBegin(GL_POINTS);
+        for(i = 0; i < LARGE_STARS; i++)
+            glVertex2fv(vLargeStars[i]);
+    glEnd();
+
+    glPointSize(120.0f);
+    if(drawMode == 3)
+        {
+        glDisable(GL_BLEND);
+        glBindTexture(GL_TEXTURE_2D, textureObjects[1]);
+        }
+
+    glBegin(GL_POINTS);
+        glVertex2f(x, y);
+    glEnd();
+
+
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_POINT_SPRITE);
+
+    // Draw distant horizon
+    glLineWidth(3.5);
+    glBegin(GL_LINE_STRIP);
+        glVertex2f(0.0f, 25.0f);
+        glVertex2f(50.0f, 100.0f);
+        glVertex2f(100.0f, 25.0f);
+        glVertex2f(225.0f, 115.0f);
+        glVertex2f(300.0f, 50.0f);
+        glVertex2f(375.0f, 100.0f);
+        glVertex2f(460.0f, 25.0f);
+        glVertex2f(525.0f, 100.0f);
+        glVertex2f(600.0f, 20.0f);
+        glVertex2f(675.0f, 70.0f);
+        glVertex2f(750.0f, 25.0f);
+        glVertex2f(800.0f, 90.0f);
+    glEnd();
+
+
+    // Swap buffers
+    glutSwapBuffers();
+    }
+
+
 // This function does any needed initialization on the rendering
 // context.
 void SetupRC()
     {
+    int i;
+
+    // Populate star list
+    for(i = 0; i < SMALL_STARS; i++)
+        {
+        vSmallStars[i][0] = (GLfloat)(rand() % SCREEN_X);
+        vSmallStars[i][1] = (GLfloat)(rand() % (SCREEN_Y - 100))+100.0f;
+        }
+
+    // Populate star list
+    for(i = 0; i < MEDIUM_STARS; i++)
+        {
+        vMediumStars[i][0] = (GLfloat)(rand() % SCREEN_X * 10)/10.0f;
+        vMediumStars[i][1] = (GLfloat)(rand() % (SCREEN_Y - 100))+100.0f;
+        }
+
+    // Populate star list
+    for(i = 0; i < LARGE_STARS; i++)
+        {
+        vLargeStars[i][0] = (GLfloat)(rand() % SCREEN_X*10)/10.0f;
+        vLargeStars[i][1] = (GLfloat)(rand() % (SCREEN_Y - 100)*10.0f)/ 10.0f +100.0f;
+        }
+
+
+    // Black background
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
+
+    // Set drawing color to white
+    glColor3f(0.0f, 0.0f, 0.0f);
+
+    // Load our textures
+    glGenTextures(2, textureObjects);
     GLbyte *pBytes;
     GLint iWidth, iHeight, iComponents;
     GLenum eFormat;
-    int i;
 
-    // Cull backs of polygons
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
+    glBindTexture(GL_TEXTURE_2D, textureObjects[0]);
 
-    glGenTextures(2, textureObjects);
 
-    // Set up texture maps
+    // Load this texture map
+    glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+    pBytes = gltLoadTGA("star.tga", &iWidth, &iHeight, &iComponents, &eFormat);
+    glTexImage2D(GL_TEXTURE_2D, 0, iComponents, iWidth, iHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBytes);
+    free(pBytes);
 
-    // Cube Map
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureObjects[CUBE_MAP]);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-    // Load Cube Map images
-    std::string path = "../LearnGL_21/Res/";
-    for(i = 0; i < 6; i++)
-    {
-        // Load this texture map
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_GENERATE_MIPMAP, GL_TRUE);
-
-        std::string file = path+szCubeFaces[i];
-        pBytes = gltLoadTGA(file.c_str(), &iWidth, &iHeight, &iComponents, &eFormat);
-        glTexImage2D(cube[i], 0, iComponents, iWidth, iHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBytes);
-        free(pBytes);
-    }
-
-    // Color map
-    glBindTexture(GL_TEXTURE_2D, textureObjects[COLOR_MAP]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+    glBindTexture(GL_TEXTURE_2D, textureObjects[1]);
     glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
-    pBytes = gltLoadTGA("../LearnGL_21/Res/tarnish.tga", &iWidth, &iHeight, &iComponents, &eFormat);
+    pBytes = gltLoadTGA("moon.tga", &iWidth, &iHeight, &iComponents, &eFormat);
     glTexImage2D(GL_TEXTURE_2D, 0, iComponents, iWidth, iHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBytes);
     free(pBytes);
 
-    /////////////////////////////////////////////////////////////////////
-    // Set up the texture units
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    // First texture unit contains the color map
-    glActiveTexture(GL_TEXTURE0);
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, textureObjects[COLOR_MAP]);
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);   // Decal tarnish
+    glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 
-    // Second texture unit contains the cube map
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureObjects[CUBE_MAP]);
-    glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
-    glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
-    glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
-    glEnable(GL_TEXTURE_CUBE_MAP);
-
-    // Multiply this texture by the one underneath
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    // Point Sprites enabled by default
+    ProcessMenu(3);
     }
 
-
-///////////////////////////////////////////////////////////
-// Cleanup
+/////////////////////////////////////////////////
+// Clean up texture objects
 void ShutdownRC(void)
     {
     glDeleteTextures(2, textureObjects);
     }
 
 
-///////////////////////////////////////////////////////////
-// Draw the skybox. This is just six quads, with texture
-// coordinates set to the corners of the cube map
-void DrawSkyBox(void)
-    {
-    GLfloat fExtent = 15.0f;
-
-    glBegin(GL_QUADS);
-        //////////////////////////////////////////////
-        // Negative X
-        // Note, we must now use the multi-texture version of glTexCoord
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, 1.0f);
-        glVertex3f(-fExtent, -fExtent, fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, -1.0f);
-        glVertex3f(-fExtent, -fExtent, -fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, -1.0f);
-        glVertex3f(-fExtent, fExtent, -fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, 1.0f);
-        glVertex3f(-fExtent, fExtent, fExtent);
-
-
-        ///////////////////////////////////////////////
-        //  Postive X
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, -1.0f);
-        glVertex3f(fExtent, -fExtent, -fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, 1.0f);
-        glVertex3f(fExtent, -fExtent, fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, 1.0f);
-        glVertex3f(fExtent, fExtent, fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, -1.0f);
-        glVertex3f(fExtent, fExtent, -fExtent);
-
-
-        ////////////////////////////////////////////////
-        // Negative Z
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, -1.0f);
-        glVertex3f(-fExtent, -fExtent, -fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, -1.0f);
-        glVertex3f(fExtent, -fExtent, -fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, -1.0f);
-        glVertex3f(fExtent, fExtent, -fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, -1.0f);
-        glVertex3f(-fExtent, fExtent, -fExtent);
-
-
-        ////////////////////////////////////////////////
-        // Positive Z
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, 1.0f);
-        glVertex3f(fExtent, -fExtent, fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, 1.0f);
-        glVertex3f(-fExtent, -fExtent, fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, 1.0f);
-        glVertex3f(-fExtent, fExtent, fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, 1.0f);
-        glVertex3f(fExtent, fExtent, fExtent);
-
-
-        //////////////////////////////////////////////////
-        // Positive Y
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, 1.0f);
-        glVertex3f(-fExtent, fExtent, fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, 1.0f, -1.0f);
-        glVertex3f(-fExtent, fExtent, -fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, -1.0f);
-        glVertex3f(fExtent, fExtent, -fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, 1.0f, 1.0f);
-        glVertex3f(fExtent, fExtent, fExtent);
-
-
-        ///////////////////////////////////////////////////
-        // Negative Y
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, -1.0f);
-        glVertex3f(-fExtent, -fExtent, -fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, -1.0f, -1.0f, 1.0f);
-        glVertex3f(-fExtent, -fExtent, fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, 1.0f);
-        glVertex3f(fExtent, -fExtent, fExtent);
-
-        glMultiTexCoord3f(GL_TEXTURE1, 1.0f, -1.0f, -1.0f);
-        glVertex3f(fExtent, -fExtent, -fExtent);
-    glEnd();
-    }
-
-
-// Called to draw scene
-void RenderScene(void)
-    {
-    // Clear the window
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glPushMatrix();
-        frameCamera.ApplyCameraTransform(); // Move the camera about
-
-        // Sky Box is manually textured
-        glActiveTexture(GL_TEXTURE0);
-        glDisable(GL_TEXTURE_2D);
-        glActiveTexture(GL_TEXTURE1);
-
-        glEnable(GL_TEXTURE_CUBE_MAP);
-        glDisable(GL_TEXTURE_GEN_S);
-        glDisable(GL_TEXTURE_GEN_T);
-        glDisable(GL_TEXTURE_GEN_R);
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
-        DrawSkyBox();
-
-
-        // Use texgen to apply cube map
-        glEnable(GL_TEXTURE_GEN_S);
-        glEnable(GL_TEXTURE_GEN_T);
-        glEnable(GL_TEXTURE_GEN_R);
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-
-        glActiveTexture(GL_TEXTURE0);
-        glEnable(GL_TEXTURE_2D);
-
-        glPushMatrix();
-            glTranslatef(0.0f, 0.0f, -3.0f);
-
-            glActiveTexture(GL_TEXTURE1);
-            glMatrixMode(GL_TEXTURE);
-            glPushMatrix();
-
-            // Invert camera matrix (rotation only) and apply to
-            // texture coordinates
-            M3DMatrix44f m, invert;
-            frameCamera.GetCameraOrientation(m);
-            m3dInvertMatrix44(invert, m);
-            glMultMatrixf(invert);
-
-            glColor3f(1.0f, 1.0f, 1.0f);
-            gltDrawSphere(0.75f, 41, 41);
-
-            glPopMatrix();
-            glMatrixMode(GL_MODELVIEW);
-        glPopMatrix();
-
-    glPopMatrix();
-
-    // Do the buffer Swap
-    glutSwapBuffers();
-    }
-
-
-
-// Respond to arrow keys by moving the camera frame of reference
-void SpecialKeys(int key, int x, int y)
-    {
-    if(key == GLUT_KEY_UP)
-        frameCamera.MoveForward(0.1f);
-
-    if(key == GLUT_KEY_DOWN)
-        frameCamera.MoveForward(-0.1f);
-
-    if(key == GLUT_KEY_LEFT)
-        frameCamera.RotateLocalY(0.1);
-
-    if(key == GLUT_KEY_RIGHT)
-        frameCamera.RotateLocalY(-0.1);
-
-    // Refresh the Window
-    glutPostRedisplay();
-    }
-
-
-///////////////////////////////////////////////////////////
-// Called by GLUT library when idle (window not being
-// resized or moved)
-void TimerFunction(int value)
-    {
-    // Redraw the scene with new coordinates
-    glutPostRedisplay();
-    glutTimerFunc(3,TimerFunction, 1);
-    }
-
 void ChangeSize(int w, int h)
     {
-    GLfloat fAspect;
-
-    // Prevent a divide by zero, when window is too short
-    // (you cant make a window of zero width).
+    // Prevent a divide by zero
     if(h == 0)
         h = 1;
 
+    // Set Viewport to window dimensions
     glViewport(0, 0, w, h);
 
-    fAspect = (GLfloat)w / (GLfloat)h;
-
-    // Reset the coordinate system before modifying
+    // Reset projection matrix stack
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    // Set the clipping volume
-    gluPerspective(35.0f, fAspect, 1.0f, 2000.0f);
+    // Establish clipping volume (left, right, bottom, top, near, far)
+    gluOrtho2D(0.0, SCREEN_X, 0.0, SCREEN_Y);
 
+
+    // Reset Model view matrix stack
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     }
@@ -333,13 +267,17 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800,600);
-    glutCreateWindow("OpenGL Cube Maps");
+    glutCreateWindow("Point Sprite Night Lights");
 
     glutReshapeFunc(ChangeSize);
-    glutSpecialFunc(SpecialKeys);
     glutDisplayFunc(RenderScene); 
 
-    glutTimerFunc(33,TimerFunction,1);
+    // Create the Menu
+    glutCreateMenu(ProcessMenu);
+    glutAddMenuEntry("Normal Points",1);
+    glutAddMenuEntry("Antialiased Points",2);
+    glutAddMenuEntry("Point Sprites", 3);
+    glutAttachMenu(GLUT_RIGHT_BUTTON);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
