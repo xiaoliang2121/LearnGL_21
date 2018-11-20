@@ -218,8 +218,8 @@ void ProcessMenu(int value){
         }
     }
 
-        // Trigger Redraw
-        glutPostRedisplay();
+    // Trigger Redraw
+    glutPostRedisplay();
 }
 
 ///////////////////////////////////////////////////////////
