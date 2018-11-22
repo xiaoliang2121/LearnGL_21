@@ -7,12 +7,20 @@
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
 
-GLint nNumPoints = 4;
+// The number of control points for this curve
+GLint nNumPoints = 3;
 
-GLfloat ctrlPoints[4][3]= {{  -4.0f, 0.0f, 0.0f},	// End Point
-                            { -6.0f, 4.0f, 0.0f},	// Control Point
-                            {  6.0f, -4.0f, 0.0f},	// Control Point
-                            {  4.0f, 0.0f, 0.0f }};	// End Point
+GLfloat ctrlPoints[3][3][3]= {{{  -4.0f, 0.0f, 4.0f},
+                               { -2.0f, 4.0f, 4.0f},
+                               { 4.0f, 0.0f, 4.0f }},
+
+                             {{  -4.0f, 0.0f, 0.0f},
+                              { -2.0f, 4.0f, 0.0f},
+                              {  4.0f, 0.0f, 0.0f }},
+
+                             {{  -4.0f, 0.0f, -4.0f},
+                              { -2.0f, 4.0f, -4.0f},
+                              {  4.0f, 0.0f, -4.0f }}};
 
 ////////////////////////////////////////////////////////////////////////////
 // Change viewing volume and viewport.  Called when window is resized
@@ -30,7 +38,8 @@ void ChangeSize(int w, int h)
     glLoadIdentity();
 
     // Produce the perspective projection
-    gluOrtho2D(-10.0f,10.0f,-10.0f,10.0f);
+//    gluOrtho2D(-10.0f,10.0f,-10.0f,10.0f);
+    glOrtho(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -46,10 +55,7 @@ void SetupRC()
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f );
 
     glColor3f(0.0f,0.0f,1.0f);
-
-    glMap1f(GL_MAP1_VERTEX_3,0.0f,100.0f,3,nNumPoints,&ctrlPoints[0][0]);
-
-    glEnable(GL_MAP1_VERTEX_3);
+    glEnable(GL_AUTO_NORMAL);
 }
 
 void DrawPoints(){
@@ -57,7 +63,8 @@ void DrawPoints(){
 
     glBegin(GL_POINTS);
         for(int i=0; i<nNumPoints; i++)
-            glVertex2fv(ctrlPoints[i]);
+            for(int j=0; j<3; j++)
+                glVertex3fv(ctrlPoints[i][j]);
     glEnd();
 }
 
@@ -66,12 +73,25 @@ void RenderScene(void)
 {
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glBegin(GL_LINE_STRIP);
-        for(int i=0; i<=100; i++)
-            glEvalCoord1f((GLfloat)i);
-    glEnd();
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+        glRotatef(45.0f,0.0f,1.0f,0.0f);
+        glRotatef(60.0f,1.0f,0.0f,0.0f);
 
-    DrawPoints();
+        glMap2f(GL_MAP2_VERTEX_3,
+                0.0f,10.0f,3,3,
+                0.0f,10.0f,9,3,
+                &ctrlPoints[0][0][0]);
+
+        glEnable(GL_MAP2_VERTEX_3);
+
+        glMapGrid2f(10,0.0f,10.0f,10,0.0f,10.0f);
+//        glEvalMesh2(GL_LINE,0,10,0,10);
+        glEvalMesh2(GL_FILL,0,10,0,10);
+
+        DrawPoints();
+
+    glPopMatrix();
 
     // Buffer swap
     glutSwapBuffers();
@@ -84,7 +104,7 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800, 600);
-    glutCreateWindow("2D Bezier Curve");
+    glutCreateWindow("3D Bezier Surface");
 
     glutDisplayFunc(RenderScene);
     glutReshapeFunc(ChangeSize);
