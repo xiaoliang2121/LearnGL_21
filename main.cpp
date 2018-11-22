@@ -66,6 +66,9 @@ void RenderScene(void)
 {
     glClear(GL_COLOR_BUFFER_BIT);
 
+//    glMapGrid1d(100,0.0,100.0);
+//    glEvalMesh1(GL_LINE,0,100);
+
     glBegin(GL_LINE_STRIP);
         for(int i=0; i<=100; i++)
             glEvalCoord1f((GLfloat)i);
