@@ -8,6 +8,7 @@
 #include "gltools.h"	// OpenGL toolkit
 #include "math3d.h"
 #include "glframe.h"
+#include "stopwatch.h"
 #include <cmath>
 #include <cstdlib>
 #include <string>
@@ -33,6 +34,49 @@ M3DMatrix44f mShadowMatrix;
 GLuint  textureObjects[NUM_TEXTURES];
 
 const char *szTextureFiles[] = {"grass.tga", "wood.tga", "orb.tga"};
+
+// Display list identifiers
+GLuint sphereList, groundList, torusList;
+
+int iMethod = 0;
+
+///////////////////////////////////////////////////////////
+// Draw the ground as a series of triangle strips
+void DrawGround(void)
+    {
+    GLfloat fExtent = 20.0f;
+    GLfloat fStep = 1.0f;
+    GLfloat y = -0.4f;
+    GLfloat iStrip, iRun;
+    GLfloat s = 0.0f;
+    GLfloat t = 0.0f;
+    GLfloat texStep = 1.0f / (fExtent * .075f);
+
+    glBindTexture(GL_TEXTURE_2D, textureObjects[GROUND_TEXTURE]);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    for(iStrip = -fExtent; iStrip <= fExtent; iStrip += fStep)
+        {
+        t = 0.0f;
+        glBegin(GL_TRIANGLE_STRIP);
+
+            for(iRun = fExtent; iRun >= -fExtent; iRun -= fStep)
+                {
+                glTexCoord2f(s, t);
+                glNormal3f(0.0f, 1.0f, 0.0f);   // All Point up
+                glVertex3f(iStrip, y, iRun);
+
+                glTexCoord2f(s + texStep, t);
+                glNormal3f(0.0f, 1.0f, 0.0f);   // All Point up
+                glVertex3f(iStrip + fStep, y, iRun);
+
+                t += texStep;
+                }
+        glEnd();
+        s += texStep;
+        }
+    }
 
 
 //////////////////////////////////////////////////////////////////
@@ -118,55 +162,39 @@ void SetupRC()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         }
+    // create display lists
+    groundList = glGenLists(3);
+    sphereList = groundList + 1;
+    torusList = sphereList + 1;
 
+    // 创建球体显示列表
+    glNewList(sphereList,GL_COMPILE);
+        gltDrawSphere(0.1f,40,20);
+    glEndList();
+
+    // 创建圆环显示列表
+    glNewList(torusList,GL_COMPILE);
+        gltDrawTorus(0.35,0.15,61,37);
+    glEndList();
+
+    // 创建地面显示列表
+    glNewList(groundList,GL_COMPILE);
+        DrawGround();
+    glEndList();
     }
 
 ////////////////////////////////////////////////////////////////////////
 // Do shutdown for the rendering context
 void ShutdownRC(void)
     {
+    // 删除显示列表
+    glDeleteLists(groundList,3);
+
     // Delete the textures
     glDeleteTextures(NUM_TEXTURES, textureObjects);
     }
 
 
-///////////////////////////////////////////////////////////
-// Draw the ground as a series of triangle strips
-void DrawGround(void)
-    {
-    GLfloat fExtent = 20.0f;
-    GLfloat fStep = 1.0f;
-    GLfloat y = -0.4f;
-    GLfloat iStrip, iRun;
-    GLfloat s = 0.0f;
-    GLfloat t = 0.0f;
-    GLfloat texStep = 1.0f / (fExtent * .075f);
-
-    glBindTexture(GL_TEXTURE_2D, textureObjects[GROUND_TEXTURE]);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    for(iStrip = -fExtent; iStrip <= fExtent; iStrip += fStep)
-        {
-        t = 0.0f;
-        glBegin(GL_TRIANGLE_STRIP);
-
-            for(iRun = fExtent; iRun >= -fExtent; iRun -= fStep)
-                {
-                glTexCoord2f(s, t);
-                glNormal3f(0.0f, 1.0f, 0.0f);   // All Point up
-                glVertex3f(iStrip, y, iRun);
-
-                glTexCoord2f(s + texStep, t);
-                glNormal3f(0.0f, 1.0f, 0.0f);   // All Point up
-                glVertex3f(iStrip + fStep, y, iRun);
-
-                t += texStep;
-                }
-        glEnd();
-        s += texStep;
-        }
-    }
 
 ///////////////////////////////////////////////////////////////////////
 // Draw random inhabitants and the rotating torus/sphere duo
@@ -190,7 +218,10 @@ void DrawInhabitants(GLint nShadow)
         {
         glPushMatrix();
         spheres[i].ApplyActorTransform();
-        gltDrawSphere(0.3f, 21, 11);
+        if(iMethod == 0)
+            gltDrawSphere(0.3f, 21, 11);
+        else
+            glCallList(sphereList);
         glPopMatrix();
         }
 
@@ -200,7 +231,10 @@ void DrawInhabitants(GLint nShadow)
         glPushMatrix();
             glRotatef(-yRot * 2.0f, 0.0f, 1.0f, 0.0f);
             glTranslatef(1.0f, 0.0f, 0.0f);
-            gltDrawSphere(0.1f,21, 11);
+            if(iMethod == 0)
+                gltDrawSphere(0.1f,21, 11);
+            else
+                glCallList(sphereList);
         glPopMatrix();
 
         if(nShadow == 0)
@@ -211,7 +245,10 @@ void DrawInhabitants(GLint nShadow)
 
         glRotatef(yRot, 0.0f, 1.0f, 0.0f);
         glBindTexture(GL_TEXTURE_2D, textureObjects[TORUS_TEXTURE]);
-        gltDrawTorus(0.35, 0.15, 61, 37);
+        if(iMethod == 0)
+            gltDrawTorus(0.35, 0.15, 61, 37);
+        else
+            glCallList(torusList);
         glMaterialfv(GL_FRONT, GL_SPECULAR, fNoLight);
     glPopMatrix();
     }
@@ -220,6 +257,9 @@ void DrawInhabitants(GLint nShadow)
 // Called to draw scene
 void RenderScene(void)
     {
+    static int iFrames = 0;             // Frame count
+    static CStopWatch frameTimer;       // Render time
+
     // Clear the window with current clearing color
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -231,7 +271,10 @@ void RenderScene(void)
 
         // Draw the ground
         glColor3f(1.0f, 1.0f, 1.0f);
-        DrawGround();
+        if(iMethod == 0)
+            DrawGround();
+        else
+            glCallList(groundList);
 
         // Draw shadows first
         glDisable(GL_DEPTH_TEST);
@@ -257,6 +300,25 @@ void RenderScene(void)
 
     // Do the buffer Swap
     glutSwapBuffers();
+
+    iFrames++;
+    if(iFrames == 100)
+    {
+        float fps;
+        char cBuffer[64];
+
+        fps = 100.0f/frameTimer.GetElapsedSeconds();
+
+        if(iMethod ==0)
+            sprintf(cBuffer,"OpenGL SphereWorld without Display Lists %.1f fps", fps);
+        else
+            sprintf(cBuffer,"OpenGL SphereWorld with Display Lists %.1f fps", fps);
+
+        glutSetWindowTitle(cBuffer);
+        frameTimer.Reset();
+        iFrames = 0;
+    }
+
     }
 
 
@@ -287,7 +349,7 @@ void TimerFunction(int value)
     {
     // Redraw the scene with new coordinates
     glutPostRedisplay();
-    glutTimerFunc(33,TimerFunction, 1);
+    glutTimerFunc(1,TimerFunction, 1);
     }
 
 void ChangeSize(int w, int h)
@@ -314,6 +376,13 @@ void ChangeSize(int w, int h)
     glLoadIdentity();
     }
 
+void ProcessMenu(int value)
+{
+    iMethod = value;
+
+    glutPostRedisplay();
+}
+
 ///////////////////////////////////////////////////////////
 // Main program entry point
 int main(int argc, char* argv[])
@@ -326,6 +395,11 @@ int main(int argc, char* argv[])
     glutReshapeFunc(ChangeSize);
     glutDisplayFunc(RenderScene);
     glutSpecialFunc(SpecialKeys);
+
+    glutCreateMenu(ProcessMenu);
+    glutAddMenuEntry("Without Display Lists",0);
+    glutAddMenuEntry("With Display Lists",1);
+    glutAttachMenu(GLUT_RIGHT_BUTTON);
 
     glutTimerFunc(33, TimerFunction, 1);
 
@@ -343,6 +417,8 @@ int main(int argc, char* argv[])
     SetupRC();
 
     glutMainLoop();
+
+    ShutdownRC();
 
     return 0;
     }
