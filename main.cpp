@@ -7,67 +7,86 @@
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
 
-// Bitmap of camp fire
-GLubyte fire[128] = { 0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0x00,
-                   0x00, 0x00, 0x00, 0xc0,
-                   0x00, 0x00, 0x01, 0xf0,
-                   0x00, 0x00, 0x07, 0xf0,
-                   0x0f, 0x00, 0x1f, 0xe0,
-                   0x1f, 0x80, 0x1f, 0xc0,
-                   0x0f, 0xc0, 0x3f, 0x80,
-                   0x07, 0xe0, 0x7e, 0x00,
-                   0x03, 0xf0, 0xff, 0x80,
-                   0x03, 0xf5, 0xff, 0xe0,
-                   0x07, 0xfd, 0xff, 0xf8,
-                   0x1f, 0xfc, 0xff, 0xe8,
-                   0xff, 0xe3, 0xbf, 0x70,
-                   0xde, 0x80, 0xb7, 0x00,
-                   0x71, 0x10, 0x4a, 0x80,
-                   0x03, 0x10, 0x4e, 0x40,
-                   0x02, 0x88, 0x8c, 0x20,
-                   0x05, 0x05, 0x04, 0x40,
-                   0x02, 0x82, 0x14, 0x40,
-                   0x02, 0x40, 0x10, 0x80,
-                   0x02, 0x64, 0x1a, 0x80,
-                   0x00, 0x92, 0x29, 0x00,
-                   0x00, 0xb0, 0x48, 0x00,
-                   0x00, 0xc8, 0x90, 0x00,
-                   0x00, 0x85, 0x10, 0x00,
-                   0x00, 0x03, 0x00, 0x00,
-                   0x00, 0x00, 0x10, 0x00 };
+// Array containing the six vertices of the cube
+static GLfloat corners[] = { -25.0f, 25.0f, 25.0f, // 0 // Front of cube
+                              25.0f, 25.0f, 25.0f, // 1
+                              25.0f, -25.0f, 25.0f,// 2
+                             -25.0f, -25.0f, 25.0f,// 3
+                             -25.0f, 25.0f, -25.0f,// 4  // Back of cube
+                              25.0f, 25.0f, -25.0f,// 5
+                              25.0f, -25.0f, -25.0f,// 6
+                             -25.0f, -25.0f, -25.0f };// 7
+
+// Array of indexes to create the cube
+static GLubyte indexes[] = { 0, 1, 2, 3,	// Front Face
+                             4, 5, 1, 0,	// Top Face
+                             3, 2, 6, 7,	// Bottom Face
+                             5, 4, 7, 6,	// Back Face
+                             1, 5, 6, 2,	// Right Face
+                             4, 0, 3, 7 };	// Left Face
+
+// Rotation amounts
+static GLfloat xRot = 0.0f;
+static GLfloat yRot = 0.0f;
 
 ///////////////////////////////////////////////////////////
 // Called to draw scene
 void RenderScene(void)
 {
-    GLubyte *pImage = NULL;
-    GLint iWidth,iHeight,iComponents;
-    GLenum eFormat;
-
     // Clear the window with current clearing color
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
 
-    pImage = (GLubyte *)gltLoadTGA("../LearnGL_21/Res/fire.tga",&iWidth,&iHeight,&iComponents,
-                        &eFormat);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+        glTranslatef(0.0f,0.0f,-200.0f);
 
-    glRasterPos2i(0,0);
+        glRotatef(xRot,1.0f,0.0f,0.0f);
+        glRotatef(yRot,0.0f,1.0f,0.0f);
 
-    if(pImage != NULL)
-        glDrawPixels(iWidth,iHeight,eFormat,GL_UNSIGNED_BYTE,pImage);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(3,GL_FLOAT,0,corners);
 
-    free(pImage);
+        glDrawElements(GL_QUADS,24,GL_UNSIGNED_BYTE,indexes);
 
+    glPopMatrix();
 
     // Flush drawing commands
     glutSwapBuffers();
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Process arrow keys
+void SpecialKeys(int key, int x, int y)
+    {
+    if(key == GLUT_KEY_UP)
+        xRot-= 5.0f;
+
+    if(key == GLUT_KEY_DOWN)
+        xRot += 5.0f;
+
+    if(key == GLUT_KEY_LEFT)
+        yRot -= 5.0f;
+
+    if(key == GLUT_KEY_RIGHT)
+        yRot += 5.0f;
+
+    if(key > 356.0f)
+        xRot = 0.0f;
+
+    if(key < -1.0f)
+        xRot = 355.0f;
+
+    if(key > 356.0f)
+        yRot = 0.0f;
+
+    if(key < -1.0f)
+        yRot = 355.0f;
+
+    // Refresh the Window
+    glutPostRedisplay();
+    }
 
 // Set coordinate system to match window coordinates
 void ChangeSize(int w, int h)
@@ -84,7 +103,7 @@ void ChangeSize(int w, int h)
     glLoadIdentity();
 
     // Psuedo window coordinates
-    gluOrtho2D(0.0, (GLfloat) w, 0.0f, (GLfloat) h);
+    gluPerspective(35.0f, (float)w/(float)h, 1.0f, 1000.0f);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -94,7 +113,9 @@ void ChangeSize(int w, int h)
 // Setup the rendering state
 void SetupRC(void)
 {
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+    glColor3ub(0,0,0);
 }
 
 ///////////////////////////////////////////////////////////
@@ -102,11 +123,12 @@ void SetupRC(void)
 int main(int argc, char* argv[])
     {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-    glutInitWindowSize(512, 512);
-    glutCreateWindow("OpenGL Bitmaps");
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("Cube DX");
 
     glutDisplayFunc(RenderScene);
+    glutSpecialFunc(SpecialKeys);
     glutReshapeFunc(ChangeSize);
 
     // 获取OpenGL版本号和厂商信息
