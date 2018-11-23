@@ -99,26 +99,36 @@ void RenderScene(void)
         glEnable(GL_BLEND);
         }
 
+    glEnableClientState(GL_VERTEX_ARRAY);
+
     // Draw small stars
     glPointSize(7.0f);          // 1.0
-    glBegin(GL_POINTS);
-        for(i = 0; i < SMALL_STARS; i++)
-            glVertex2fv(vSmallStars[i]);
-    glEnd();
+//    glBegin(GL_POINTS);
+//        for(i = 0; i < SMALL_STARS; i++)
+//            glVertex2fv(vSmallStars[i]);
+//    glEnd();
+    glVertexPointer(2,GL_FLOAT,0,vSmallStars);
+    glDrawArrays(GL_POINTS,0,SMALL_STARS);
 
     // Draw medium sized stars
     glPointSize(12.0f);         // 3.0
-    glBegin(GL_POINTS);
-        for(i = 0; i< MEDIUM_STARS; i++)
-            glVertex2fv(vMediumStars[i]);
-    glEnd();
+//    glBegin(GL_POINTS);
+//        for(i = 0; i< MEDIUM_STARS; i++)
+//            glVertex2fv(vMediumStars[i]);
+//    glEnd();
+    glVertexPointer(2,GL_FLOAT,0,vMediumStars);
+    glDrawArrays(GL_POINTS,0,MEDIUM_STARS);
 
     // Draw largest stars
     glPointSize(20.0f);      // 5.5
-    glBegin(GL_POINTS);
-        for(i = 0; i < LARGE_STARS; i++)
-            glVertex2fv(vLargeStars[i]);
-    glEnd();
+//    glBegin(GL_POINTS);
+//        for(i = 0; i < LARGE_STARS; i++)
+//            glVertex2fv(vLargeStars[i]);
+//    glEnd();
+    glVertexPointer(2,GL_FLOAT,0,vLargeStars);
+    glDrawArrays(GL_POINTS,0,LARGE_STARS);
+
+    glDisableClientState(GL_VERTEX_ARRAY);
 
     glPointSize(120.0f);
     if(drawMode == 3)
@@ -203,7 +213,7 @@ void SetupRC()
 
     // Load this texture map
     glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
-    pBytes = gltLoadTGA("star.tga", &iWidth, &iHeight, &iComponents, &eFormat);
+    pBytes = gltLoadTGA("../LearnGL_21/Res/star.tga", &iWidth, &iHeight, &iComponents, &eFormat);
     glTexImage2D(GL_TEXTURE_2D, 0, iComponents, iWidth, iHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBytes);
     free(pBytes);
 
@@ -214,7 +224,7 @@ void SetupRC()
 
     glBindTexture(GL_TEXTURE_2D, textureObjects[1]);
     glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
-    pBytes = gltLoadTGA("moon.tga", &iWidth, &iHeight, &iComponents, &eFormat);
+    pBytes = gltLoadTGA("../LearnGL_21/Res/moon.tga", &iWidth, &iHeight, &iComponents, &eFormat);
     glTexImage2D(GL_TEXTURE_2D, 0, iComponents, iWidth, iHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBytes);
     free(pBytes);
 
