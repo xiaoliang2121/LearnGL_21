@@ -7,7 +7,7 @@
 #include <cstdio>
 #include "gltools.h"	// OpenGL toolkit
 #include "glframe.h"
-#include "TriangleMesh.h"
+#include "VBOMesh.h"
 #include <cmath>
 #include <string>
 
@@ -26,8 +26,8 @@ extern GLfloat normalsGlass [227][3];
 extern GLfloat texturesGlass [227][2];
 
 
-CTriangleMesh   thunderBirdBody;
-CTriangleMesh   thunderBirdGlass;
+CVBOMesh   thunderBirdBody;
+CVBOMesh   thunderBirdGlass;
 
 // Storeage for two texture objects
 GLuint      textureObjects[3];
@@ -532,11 +532,12 @@ int main(int argc, char* argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
     glutInitWindowSize(800, 600);
-    glutCreateWindow("OpenGL ThunderBird");
+    glutCreateWindow("OpenGL ThunderBird w/VBO's");
 
     glutDisplayFunc(RenderScene);
     glutSpecialFunc(SpecialKeys);
     glutReshapeFunc(ChangeSize);
+    glutTimerFunc(33, TimerFunction, 1);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);

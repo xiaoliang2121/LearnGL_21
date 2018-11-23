@@ -15,7 +15,9 @@ if(WINDOWS)
     INCLUDE_DIRECTORIES(${FILE_PATH})
     LINK_DIRECTORIES(${FILE_PATH})
 
-    set(SRC_FILE ${SRC_FILE} ${FILE_PATH}/math3d.cpp ${FILE_PATH}/gltools.cpp ${FILE_PATH}/GLee.c ${FILE_PATH}/TriangleMesh.cpp)
+    set(SRC_FILE ${SRC_FILE} ${FILE_PATH}/math3d.cpp ${FILE_PATH}/gltools.cpp
+        ${FILE_PATH}/GLee.c ${FILE_PATH}/TriangleMesh.cpp
+        ${FILE_PATH}/VBOMesh.cpp)
     add_executable(${PROJECT_NAME} ${SRC_FILE})
     if(CMAKE_BUILD_TYPE MATCHES "Debug")
         target_link_libraries(${PROJECT_NAME} freeglutd)
@@ -29,7 +31,9 @@ elseif(LINUX)
     include_directories(${INC_PATH})
     link_directories(/usr/local/lib)
 
-    set(SRC_FILE ${SRC_FILE} ${SHARD_PATH}/math3d.cpp ${SHARD_PATH}/gltools.cpp ${SHARD_PATH}/GLee.c ${SHARD_PATH}/TriangleMesh.cpp)
+    set(SRC_FILE ${SRC_FILE} ${SHARD_PATH}/math3d.cpp ${SHARD_PATH}/gltools.cpp
+        ${SHARD_PATH}/GLee.c ${SHARD_PATH}/TriangleMesh.cpp
+        ${SHARD_PATH}/VBOMesh.cpp)
     add_executable(${PROJECT_NAME} ${SRC_FILE})
     target_link_libraries(${PROJECT_NAME} glut GL GLU m)
 
