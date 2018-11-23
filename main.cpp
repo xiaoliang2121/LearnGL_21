@@ -9,6 +9,7 @@
 #include "glframe.h"
 #include "TriangleMesh.h"
 #include <cmath>
+#include <string>
 
 GLFrame    frameCamera;             // The camera
 
@@ -74,11 +75,13 @@ void SetupRC()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     // Load Cube Map images
+    std::string path = "../LearnGL_21/Res/";
     for(i = 0; i < 6; i++)
         {
         // Load this texture map
+        std::string file = path + szCubeFaces[i];
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_GENERATE_MIPMAP, GL_TRUE);
-        pBytes = gltLoadTGA(szCubeFaces[i], &iWidth, &iHeight, &iComponents, &eFormat);
+        pBytes = gltLoadTGA(file.c_str(), &iWidth, &iHeight, &iComponents, &eFormat);
         glTexImage2D(cube[i], 0, iComponents, iWidth, iHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBytes);
         free(pBytes);
         }
