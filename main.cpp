@@ -537,6 +537,7 @@ int main(int argc, char* argv[])
     glutDisplayFunc(RenderScene);
     glutSpecialFunc(SpecialKeys);
     glutReshapeFunc(ChangeSize);
+    glutTimerFunc(33, TimerFunction, 1);
 
     // 获取OpenGL版本号和厂商信息
     const GLubyte *name = glGetString(GL_VENDOR);
